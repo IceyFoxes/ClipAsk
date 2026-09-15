@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/Screenshot.Core/Screenshot.Core.csproj" />
+  <Project Path="src/Screenshot.Desktop/Screenshot.Desktop.csproj" />
+  <Project Path="tests/Screenshot.Core.Tests/Screenshot.Core.Tests.csproj" />
+</Solution>

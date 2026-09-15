@@ -1,0 +1,78 @@
+<Window x:Class="Screenshot.Desktop.ResultWindow" x:ClassModifier="internal"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Screenshot" Width="480" Height="220"
+        WindowStyle="None" ResizeMode="CanResize" ShowActivated="False" ShowInTaskbar="False" Topmost="True"
+        UseLayoutRounding="True" SnapsToDevicePixels="True" FontFamily="Segoe UI"
+        Background="#171B22" Foreground="#E7EBF1">
+    <Window.Resources>
+        <Style x:Key="QuietButton" TargetType="Button">
+            <Setter Property="Foreground" Value="#B4BFCE" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="MinWidth" Value="24" />
+            <Setter Property="Height" Value="25" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Surface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="#263241" /></Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Background" Value="#33465B" /></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="#739CD1" /></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <Border Background="#171B22" BorderBrush="#303947" BorderThickness="1" CornerRadius="7">
+        <Grid Margin="12">
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+            <Grid Grid.Row="0" MouseLeftButtonDown="HeaderMouseDown">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <TextBlock x:Name="HeaderTitle" Text="Screenshot" FontSize="12" FontWeight="SemiBold" Foreground="#9DAABE" VerticalAlignment="Center" />
+                <Button x:Name="StopButton" Grid.Column="1" Content="Stop" Style="{StaticResource QuietButton}" Click="StopClick" Visibility="Collapsed" AutomationProperties.Name="Stop answer" />
+                <Button x:Name="CopyButton" Grid.Column="2" Content="Copy" Style="{StaticResource QuietButton}" Click="CopyAnswerClick" IsEnabled="False" AutomationProperties.Name="Copy answer" />
+                <Button x:Name="MoreButton" Grid.Column="3" Content="..." Style="{StaticResource QuietButton}" Click="MoreClick" ToolTip="More actions" AutomationProperties.Name="More actions">
+                    <Button.ContextMenu>
+                        <ContextMenu x:Name="ActionsMenu" Background="#202733" Foreground="#E7EBF1">
+                            <MenuItem Header="New capture" InputGestureText="Ctrl+Alt+S" Click="CaptureClick" />
+                            <MenuItem x:Name="CopyImageItem" Header="Copy image" Click="CopyImageClick" />
+                            <MenuItem x:Name="AnswerAgainItem" Header="Answer again" Click="AnswerClick" />
+                            <Separator />
+                            <MenuItem x:Name="ConnectionItem" Header="Connect ChatGPT" Click="ConnectClick" />
+                            <MenuItem Header="Details">
+                                <MenuItem x:Name="AccountDetailsItem" Header="Disconnected" IsEnabled="False" />
+                                <MenuItem x:Name="FirstTextItem" Header="First text received: —" IsEnabled="False" />
+                                <MenuItem x:Name="CompletionItem" Header="Response complete: —" IsEnabled="False" />
+                            </MenuItem>
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                </Button>
+                <Button x:Name="CloseButton" Grid.Column="4" Content="×" FontSize="16" Style="{StaticResource QuietButton}" Click="CloseClick" ToolTip="Close to tray" AutomationProperties.Name="Close to tray" />
+            </Grid>
+            <Grid Grid.Row="1" Margin="0,8,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition x:Name="PreviewColumn" Width="0" /><ColumnDefinition x:Name="GapColumn" Width="0" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                <Border x:Name="PreviewContainer" Grid.Column="0" Background="#10151C" BorderBrush="#293341" BorderThickness="1" CornerRadius="4" Padding="3" Visibility="Collapsed">
+                    <Image x:Name="PreviewImage" Stretch="Uniform" />
+                </Border>
+                <Grid Grid.Column="2">
+                    <TextBox x:Name="AnswerText" IsReadOnly="True" IsReadOnlyCaretVisible="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" BorderThickness="0" Background="Transparent" Foreground="#E7EBF1" Padding="0" FontSize="14" />
+                    <TextBlock x:Name="HintText" Text="Capture a question with Ctrl+Alt+S." TextWrapping="Wrap" Foreground="#9DAABE" FontSize="14" VerticalAlignment="Center" IsHitTestVisible="False" />
+                </Grid>
+            </Grid>
+            <Grid x:Name="Footer" Grid.Row="2" Margin="0,8,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <TextBlock x:Name="StatusText" FontSize="11" Foreground="#9DAABE" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <Button x:Name="PrimaryActionButton" Grid.Column="1" Content="Connect ChatGPT" Style="{StaticResource QuietButton}" Background="#243B55" Foreground="#E7EBF1" Click="PrimaryActionClick" />
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
