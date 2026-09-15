@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+.vs/
+.devin/tools/
+.devin/state/
+.devin/evidence/
+.devin/protocol/
+.env
+.env.*
+*.user
+*.suo
+*.pfx
+*.cer
+artifacts/
+TestResults/
