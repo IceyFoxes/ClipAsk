@@ -27,6 +27,15 @@ public sealed class CaptureGeometryTests
     }
 
     [Fact]
+    public void PanelPlacementUsesVerticalEdgesWhenSidesDoNotFit()
+    {
+        var work = new PixelRect(0, 0, 1000, 800);
+
+        Assert.Equal(new PixelRect(350, 312, 400, 200), PanelPlacement.Place(new(350, 100, 300, 200), work, 400, 200));
+        Assert.Equal(new PixelRect(350, 88, 400, 200), PanelPlacement.Place(new(350, 300, 300, 500), work, 400, 200));
+    }
+
+    [Fact]
     public void RequestGenerationInvalidatesOlderRequests()
     {
         var generation = new RequestGeneration();
@@ -34,5 +43,43 @@ public sealed class CaptureGeometryTests
         var second = generation.Next();
         Assert.False(generation.IsCurrent(first));
         Assert.True(generation.IsCurrent(second));
+    }
+
+    [Theory]
+    [InlineData(1600, 120, ResultLayoutMode.Stacked)]
+    [InlineData(1200, 450, ResultLayoutMode.Stacked)]
+    [InlineData(450, 1200, ResultLayoutMode.Split)]
+    [InlineData(180, 80, ResultLayoutMode.Stacked)]
+    public void ResultLayoutChoosesExpectedModeAndPreservesAspectRatio(double width, double height, ResultLayoutMode expected)
+    {
+        var layout = ResultLayoutCalculator.Calculate(new(width, height, 1920, 1080));
+
+        Assert.Equal(expected, layout.Mode);
+        Assert.InRange(Math.Abs((layout.PreviewWidth / layout.PreviewHeight) - (width / height)), 0, 0.0001);
+        Assert.True(layout.WindowWidth <= 1888);
+        Assert.True(layout.WindowHeight <= 1048);
+        Assert.True(layout.PreviewWidth <= width);
+        Assert.True(layout.PreviewHeight <= height);
+        Assert.True(layout.AnswerWidth >= 280);
+        Assert.True(layout.AnswerHeight >= 112);
+    }
+
+    [Fact]
+    public void ResultLayoutKeepsTinyCaptureAtNaturalSize()
+    {
+        var layout = ResultLayoutCalculator.Calculate(new(180, 80, 1920, 1080));
+
+        Assert.Equal(180, layout.PreviewWidth);
+        Assert.Equal(80, layout.PreviewHeight);
+    }
+
+    [Fact]
+    public void ResultLayoutConstrainsLargeCaptureToWorkArea()
+    {
+        var layout = ResultLayoutCalculator.Calculate(new(2560, 1440, 1280, 720));
+
+        Assert.True(layout.WindowWidth <= 1248);
+        Assert.True(layout.WindowHeight <= 688);
+        Assert.Equal(16d / 9d, layout.PreviewWidth / layout.PreviewHeight, 6);
     }
 }

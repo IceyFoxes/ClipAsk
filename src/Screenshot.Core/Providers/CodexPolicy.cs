@@ -132,6 +132,47 @@ public static class CodexPolicy
         return new(model, effort, name ?? model);
     }
 
+    public static IReadOnlyList<CodexModelSelection> ListModels(IEnumerable<JsonElement> models)
+    {
+        return models
+            .Where(IsEligibleModel)
+            .GroupBy(value => value.GetProperty("model").GetString(), StringComparer.Ordinal)
+            .Where(group => group.Key is not null && group.Count() == 1)
+            .Select(group => CreateSelection(group.Single()))
+            .OrderBy(selection => selection.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+            .ToArray();
+    }
+
+    public static CodexModelSelection SelectModel(IEnumerable<JsonElement> models, string requestedModel)
+    {
+        var matches = ListModels(models).Where(model => model.Model == requestedModel).ToArray();
+        if (matches.Length != 1)
+            throw new InvalidOperationException("The selected model is not available for screenshots. No model request was sent.");
+        return matches[0];
+    }
+
+    private static bool IsEligibleModel(JsonElement model)
+    {
+        var hasAvailabilityWarning = model.TryGetProperty("availabilityNux", out var availability) && availability.ValueKind != JsonValueKind.Null;
+        if (hasAvailabilityWarning || model.GetProperty("hidden").GetBoolean() || !SupportsImages(model))
+            return false;
+        var name = model.GetProperty("model").GetString();
+        var effort = name == PreferredModel && SupportsEffort(model, PreferredReasoningEffort)
+            ? PreferredReasoningEffort
+            : model.GetProperty("defaultReasoningEffort").GetString();
+        return !string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(effort) && SupportsEffort(model, effort);
+    }
+
+    private static CodexModelSelection CreateSelection(JsonElement model)
+    {
+        var name = model.GetProperty("model").GetString()!;
+        var effort = name == PreferredModel && SupportsEffort(model, PreferredReasoningEffort)
+            ? PreferredReasoningEffort
+            : model.GetProperty("defaultReasoningEffort").GetString()!;
+        var displayName = model.GetProperty("displayName").GetString();
+        return new(name, effort, string.IsNullOrWhiteSpace(displayName) ? name : displayName);
+    }
+
     private static bool SupportsImages(JsonElement model) =>
         !model.TryGetProperty("inputModalities", out var modalities) ||
         (modalities.ValueKind == JsonValueKind.Array && modalities.EnumerateArray().Any(value => value.GetString() == "image"));
@@ -155,7 +196,7 @@ public static class CodexPolicy
             serviceTier = "default"
         });
 
-    public static JsonElement TurnParameters(string threadId, ReadOnlyMemory<byte> png, CodexModelSelection model)
+    public static JsonElement TurnParameters(string threadId, ReadOnlyMemory<byte> png, CodexModelSelection model, string? instruction = null)
     {
         ReadOnlySpan<byte> signature = [137, 80, 78, 71, 13, 10, 26, 10];
         if (png.Length > MaximumImageBytes || !png.Span.StartsWith(signature))
@@ -166,7 +207,7 @@ public static class CodexPolicy
             threadId,
             input = new object[]
             {
-                new { type = "text", text = AnswerPrompt.Request },
+                new { type = "text", text = AnswerPrompt.CreateRequest(instruction) },
                 new { type = "image", url = "data:image/png;base64," + Convert.ToBase64String(png.Span), detail = "high" }
             },
             model = model.Model,

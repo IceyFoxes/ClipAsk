@@ -4,6 +4,8 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Screenshot.Core.Capture;
+using Screenshot.Core.Providers;
 
 namespace Screenshot.Desktop;
 
@@ -20,7 +22,7 @@ internal static class SmokeRenderer
         var window = new ResultWindow();
         var dismissed = false;
         window.DismissRequested += () => dismissed = true;
-        window.SetPreview(source);
+        window.SetPreview(source, ResultLayoutCalculator.Calculate(new(800, 300, 1920, 1080)));
         window.SetAccount("ChatGPT · free", true);
         window.SetAnswer("42.\n17 + 25 = 42.");
         window.SetStatus("Demo - not an AI response");
@@ -34,18 +36,42 @@ internal static class SmokeRenderer
         window.SetAnswer(UnicodeAnswer);
         window.SetStatus("Demo - not an AI response");
         if (window.Answer != UnicodeAnswer)
-            throw new InvalidOperationException("Compact Unicode smoke answer did not round-trip.");
+            throw new InvalidOperationException("Unicode smoke answer did not round-trip.");
         Save(RenderWindow(window), Path.Combine(outputDirectory, "compact-unicode.png"));
 
         window.DismissForSmoke();
         if (!dismissed)
             throw new InvalidOperationException("ResultWindow dismiss event did not fire.");
+
+        var tallSource = CreateSource(450, 1200, "Explain this tall panel");
+        window.SetPreview(tallSource, ResultLayoutCalculator.Calculate(new(450, 1200, 1920, 1080)));
+        window.SetAccount("ChatGPT · free", true);
+        window.SetStatus("Preparing answer…");
+        window.SetBusy(true);
+        Save(RenderWindow(window), Path.Combine(outputDirectory, "split-preparing.png"));
+        window.SetAnswer("This layout keeps the tall capture readable while reserving a stable answer column.");
+        window.SetBusy(false);
+        window.SetStatus("Response complete");
+        Save(RenderWindow(window), Path.Combine(outputDirectory, "split-complete.png"));
+
+        var stripSource = CreateSource(1600, 120, "What does this banner mean?");
+        window.SetPreview(stripSource, ResultLayoutCalculator.Calculate(new(1600, 120, 1920, 1080)));
+        window.SetAnswer("The result is $17 + 25 = 42$.\n\n```csharp\nvar answer = 17 + 25;\n```");
+        window.SetStatus("Response complete");
+        Save(RenderWindow(window), Path.Combine(outputDirectory, "formatted-complete.png"));
+
         window.ClearPreview();
         window.SetAccount("Disconnected", false);
         window.SetWelcome("Capture a question with Ctrl+Alt+S.");
         window.SetStatus("Ready");
         Save(RenderWindow(window), Path.Combine(outputDirectory, "compact-initial.png"));
         window.DismissForSmoke();
+
+        var options = new AnswerOptionsWindow(
+            "Explain each step and keep the answer concise.",
+            "gpt-5.6-terra",
+            [new CodexModelSelection("gpt-5.6-terra", "low", "GPT-5.6 Terra")]);
+        Save(RenderWindow(options), Path.Combine(outputDirectory, "answer-options.png"));
 
         var overlayCancelled = 0;
         var overlayClosed = false;
@@ -65,6 +91,10 @@ internal static class SmokeRenderer
             render = "smoke-render.png",
             compactUnicode = "compact-unicode.png",
             compactInitial = "compact-initial.png",
+            splitPreparing = "split-preparing.png",
+            splitComplete = "split-complete.png",
+            formattedComplete = "formatted-complete.png",
+            answerOptions = "answer-options.png",
             answer = "42.\n17 + 25 = 42.",
             actualResultWindow = true,
             previewPixelWidth,
@@ -83,29 +113,34 @@ internal static class SmokeRenderer
         File.WriteAllText(Path.Combine(outputDirectory, "smoke-diagnostics.json"), diagnostics);
     }
 
-    private static RenderTargetBitmap RenderWindow(ResultWindow window)
+    private static RenderTargetBitmap RenderWindow(Window window)
     {
         var content = (FrameworkElement)window.Content;
-        content.Measure(new Size(ResultWindow.CardWidth, ResultWindow.CardHeight));
-        content.Arrange(new Rect(0, 0, ResultWindow.CardWidth, ResultWindow.CardHeight));
+        var width = window.Width;
+        var height = window.Height;
+        content.Measure(new Size(width, height));
+        content.Arrange(new Rect(0, 0, width, height));
         content.UpdateLayout();
         if (content.ActualWidth <= 0 || content.ActualHeight <= 0)
-            throw new InvalidOperationException("Compact ResultWindow content did not measure as expected.");
-        var render = new RenderTargetBitmap((int)ResultWindow.CardWidth, (int)ResultWindow.CardHeight, 96, 96, PixelFormats.Pbgra32);
+            throw new InvalidOperationException("ResultWindow content did not measure as expected.");
+        var render = new RenderTargetBitmap((int)Math.Ceiling(width), (int)Math.Ceiling(height), 96, 96, PixelFormats.Pbgra32);
         render.Render(content);
         render.Freeze();
         return render;
     }
 
-    private static RenderTargetBitmap CreateSource()
+    private static RenderTargetBitmap CreateSource() => CreateSource(800, 300, "What is 17 + 25?");
+
+    private static RenderTargetBitmap CreateSource(int width, int height, string text)
     {
-        var source = new RenderTargetBitmap(800, 300, 96, 96, PixelFormats.Pbgra32);
+        var source = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
         var sourceVisual = new DrawingVisual();
         using (var drawing = sourceVisual.RenderOpen())
         {
-            drawing.DrawRectangle(Brushes.White, null, new Rect(0, 0, 800, 300));
+            drawing.DrawRectangle(Brushes.White, null, new Rect(0, 0, width, height));
             var typeface = new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
-            drawing.DrawText(new FormattedText("What is 17 + 25?", System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, 48, Brushes.Black, 1), new Point(40, 80));
+            var fontSize = Math.Min(48, Math.Max(18, height * 0.16));
+            drawing.DrawText(new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, fontSize, Brushes.Black, 1), new Point(24, Math.Max(24, height * 0.20)));
         }
         source.Render(sourceVisual);
         source.Freeze();

@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed design direction. The capture, provider connection, streaming, and cancellation pipeline already work; the adaptive result surface and visual system described here are not yet implemented.
+Implementation in progress. The result surface now uses tested adaptive stacked/split geometry, proportional previews, edge-aware placement, headerless controls, and stable preparing/streaming states. Native system-theme materials, backdrop integration, motion, and the full accessibility verification matrix remain to be implemented.
 
 ## Product thesis
 
@@ -41,7 +41,7 @@ This requires the product to be understandable without onboarding, quiet when no
 - A chat transcript or conversation history.
 - Follow-up composition as a primary interaction.
 - OCR tools, screenshot editing, annotations, or local models.
-- Multiple provider or model selectors.
+- Multiple providers or a model selector in the primary capture path. Eligible account-advertised models may be chosen in the secondary Answer options surface.
 - Speculative uploads before the user releases a valid selection.
 - Changes to ordinary Print Screen behavior.
 - Hiding provider latency with fake percentages or fabricated stages.

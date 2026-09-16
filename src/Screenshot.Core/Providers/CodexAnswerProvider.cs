@@ -16,6 +16,7 @@ public sealed class CodexAnswerProvider : IAnswerProvider
     private JsonRpcConnection? connection;
     private SubscriptionAccount? account;
     private CodexModelSelection? model;
+    private IReadOnlyList<JsonElement>? modelCatalog;
     private string? loginId;
     private CancellationTokenSource? activeAnswerCancellation;
     private Task? activeAnswerTask;
@@ -53,7 +54,10 @@ public sealed class CodexAnswerProvider : IAnswerProvider
         var next = CodexPolicy.ReadAccount(response);
         account = next;
         if (!next.IsConnected)
+        {
             model = null;
+            modelCatalog = null;
+        }
         return next;
     }
 
@@ -86,6 +90,7 @@ public sealed class CodexAnswerProvider : IAnswerProvider
             }
             account = new(false, null);
             model = null;
+            modelCatalog = null;
         }
         finally
         {
@@ -102,10 +107,16 @@ public sealed class CodexAnswerProvider : IAnswerProvider
 
     public async IAsyncEnumerable<AnswerUpdate> AnswerAsync(ReadOnlyMemory<byte> png, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default, CaptureTiming? timing = null)
     {
+        await foreach (var update in AnswerAsync(png, AnswerRequestOptions.Default, cancellationToken, timing).ConfigureAwait(false))
+            yield return update;
+    }
+
+    public async IAsyncEnumerable<AnswerUpdate> AnswerAsync(ReadOnlyMemory<byte> png, AnswerRequestOptions options, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default, CaptureTiming? timing = null)
+    {
         await answerGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var channel = Channel.CreateUnbounded<AnswerUpdate>();
-        var producer = ProduceAnswerAsync(png, channel.Writer, linked, timing);
+        var producer = ProduceAnswerAsync(png, options, channel.Writer, linked, timing);
         lock (lifecycleGate)
         {
             activeAnswerCancellation = linked;
@@ -137,7 +148,17 @@ public sealed class CodexAnswerProvider : IAnswerProvider
         }
     }
 
-    private async Task ProduceAnswerAsync(ReadOnlyMemory<byte> png, ChannelWriter<AnswerUpdate> output, CancellationTokenSource linked, CaptureTiming? timing)
+    public async Task<IReadOnlyList<CodexModelSelection>> GetAvailableModelsAsync(CancellationToken cancellationToken = default)
+    {
+        await EnsureStartedAsync(cancellationToken).ConfigureAwait(false);
+        var rpc = connection ?? throw new InvalidOperationException("Codex transport is unavailable.");
+        var connected = account?.IsConnected == true ? account : await GetAccountAsync(cancellationToken).ConfigureAwait(false);
+        if (!connected.IsConnected)
+            return Array.Empty<CodexModelSelection>();
+        return CodexPolicy.ListModels(await GetModelCatalogAsync(rpc, cancellationToken).ConfigureAwait(false));
+    }
+
+    private async Task ProduceAnswerAsync(ReadOnlyMemory<byte> png, AnswerRequestOptions options, ChannelWriter<AnswerUpdate> output, CancellationTokenSource linked, CaptureTiming? timing)
     {
         string? threadId = null;
         string? turnId = null;
@@ -188,13 +209,14 @@ public sealed class CodexAnswerProvider : IAnswerProvider
             var connected = account?.IsConnected == true ? account : await GetAccountAsync(linked.Token).ConfigureAwait(false);
             if (!connected.IsConnected)
                 throw new InvalidOperationException("Connect a ChatGPT account before answering a screenshot.");
-            var selectedModel = await GetModelAsync(rpc, linked.Token).ConfigureAwait(false);
+            var selectedModel = await GetModelAsync(rpc, options.Model, linked.Token).ConfigureAwait(false);
+            Publish(new(AnswerUpdateKind.Model, $"{selectedModel.DisplayName} · {selectedModel.ReasoningEffort}"));
             var threadResponse = await rpc.RequestAsync("thread/start", CodexPolicy.ThreadParameters(GetWorkspace(), selectedModel), linked.Token).ConfigureAwait(false);
             threadId = ReadId(threadResponse, "threadId", "thread") ?? throw new InvalidOperationException("Codex did not return a thread identifier.");
 
             rpc.Notification += OnNotification;
             rpc.UnsupportedRequest += OnUnsupportedRequest;
-            var turnParameters = CodexPolicy.TurnParameters(threadId, png, selectedModel);
+            var turnParameters = CodexPolicy.TurnParameters(threadId, png, selectedModel, options.Instruction);
             turnRequestSent = true;
             var turnResponse = await rpc.RequestAsync("turn/start", turnParameters, linked.Token).ConfigureAwait(false);
             turnId = ReadId(turnResponse, "turnId", "turn") ?? throw new InvalidOperationException("Codex did not return a turn identifier.");
@@ -256,10 +278,20 @@ public sealed class CodexAnswerProvider : IAnswerProvider
         }
     }
 
-    private async Task<CodexModelSelection> GetModelAsync(JsonRpcConnection rpc, CancellationToken cancellationToken)
+    private async Task<CodexModelSelection> GetModelAsync(JsonRpcConnection rpc, string? requestedModel, CancellationToken cancellationToken)
     {
-        if (model is not null)
+        if (string.IsNullOrWhiteSpace(requestedModel) && model is not null)
             return model;
+        var entries = await GetModelCatalogAsync(rpc, cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(requestedModel))
+            return CodexPolicy.SelectModel(entries, requestedModel);
+        return model = CodexPolicy.SelectModel(entries);
+    }
+
+    private async Task<IReadOnlyList<JsonElement>> GetModelCatalogAsync(JsonRpcConnection rpc, CancellationToken cancellationToken)
+    {
+        if (modelCatalog is not null)
+            return modelCatalog;
         var entries = new List<JsonElement>();
         string? cursor = null;
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -280,7 +312,7 @@ public sealed class CodexAnswerProvider : IAnswerProvider
                 throw new InvalidOperationException("Codex returned a repeated model catalog cursor.");
             cursor = next;
         }
-        return model = CodexPolicy.SelectModel(entries);
+        return modelCatalog = entries;
     }
 
     private async Task EnsureStartedAsync(CancellationToken cancellationToken)
@@ -350,6 +382,7 @@ public sealed class CodexAnswerProvider : IAnswerProvider
         {
             account = null;
             model = null;
+            modelCatalog = null;
             AccountChanged?.Invoke();
         }
     }
@@ -438,6 +471,7 @@ public sealed class CodexAnswerProvider : IAnswerProvider
         process = null;
         account = null;
         model = null;
+        modelCatalog = null;
         if (oldProcess is not null)
         {
             try

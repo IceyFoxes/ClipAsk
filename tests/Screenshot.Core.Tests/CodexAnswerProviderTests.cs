@@ -42,18 +42,21 @@ public sealed class CodexAnswerProviderTests
     {
         await using var host = new FakeHost();
         await using var provider = CreateProvider(host);
-        var answer = CollectAsync(provider.AnswerAsync(Png(), TestContext.Current.CancellationToken));
+        var answer = CollectAsync(provider.AnswerAsync(Png(), new AnswerRequestOptions("Show the calculation.", "request-model"), TestContext.Current.CancellationToken));
         await CompleteInitializeAsync(host);
         await RespondConnectedAccountAndCatalogAsync(host);
         var thread = await host.NextAsync();
         host.Respond(thread, Json("""{"thread":{"id":"t"}}"""));
         var turn = await host.NextAsync();
+        Assert.Equal("request-model", turn.GetProperty("params").GetProperty("model").GetString());
+        Assert.Contains("Show the calculation.", turn.GetProperty("params").GetProperty("input")[0].GetProperty("text").GetString());
         host.Notify("item/started", Json("""{"threadId":"t","turnId":"u","item":{"type":"agentMessage","id":"a","phase":"final_answer","text":""}}"""));
         host.Notify("item/agentMessage/delta", Json("""{"threadId":"t","turnId":"u","itemId":"a","delta":"42."}"""));
         host.Notify("item/completed", Json("""{"threadId":"t","turnId":"u","item":{"type":"agentMessage","id":"a","phase":"final_answer","text":"42."}}"""));
         host.Respond(turn, Json("""{"turn":{"id":"u"}}"""));
         host.Notify("turn/completed", Json("""{"threadId":"t","turn":{"id":"u","status":"completed","items":[],"error":null}}"""));
         var updates = await answer;
+        Assert.Contains(updates, update => update.Kind == AnswerUpdateKind.Model && update.Text.Contains("Test vision", StringComparison.Ordinal));
         Assert.Equal("42.", updates.Last(update => update.Kind == AnswerUpdateKind.Completed).Text);
     }
 

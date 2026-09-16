@@ -6,14 +6,43 @@ public static class PanelPlacement
     {
         var width = Math.Clamp(desiredWidth, 1, workArea.Width);
         var height = Math.Clamp(desiredHeight, 1, workArea.Height);
-        var x = crop.Right + gap;
-        if (x < workArea.X || x + width > workArea.Right)
+        var candidates = new[]
         {
-            var left = crop.X - gap - width;
-            x = left >= workArea.X && left + width <= workArea.Right ? left : Math.Clamp(x, workArea.X, workArea.Right - width);
+            new PixelRect(crop.Right + gap, crop.Y, width, height),
+            new PixelRect(crop.X - gap - width, crop.Y, width, height),
+            new PixelRect(crop.X, crop.Bottom + gap, width, height),
+            new PixelRect(crop.X, crop.Y - gap - height, width, height)
+        };
+
+        foreach (var candidate in candidates)
+        {
+            if (Contains(workArea, candidate) && OverlapArea(candidate, crop) == 0)
+                return candidate;
         }
 
-        var y = Math.Clamp(crop.Y, workArea.Y, workArea.Bottom - height);
-        return new(x, y, width, height);
+        return candidates
+            .Select((candidate, index) => new
+            {
+                Rect = new PixelRect(
+                    Math.Clamp(candidate.X, workArea.X, workArea.Right - width),
+                    Math.Clamp(candidate.Y, workArea.Y, workArea.Bottom - height),
+                    width,
+                    height),
+                Index = index
+            })
+            .OrderBy(candidate => OverlapArea(candidate.Rect, crop))
+            .ThenBy(candidate => candidate.Index)
+            .Select(candidate => candidate.Rect)
+            .First();
+    }
+
+    private static bool Contains(PixelRect outer, PixelRect inner) =>
+        inner.X >= outer.X && inner.Y >= outer.Y && inner.Right <= outer.Right && inner.Bottom <= outer.Bottom;
+
+    private static long OverlapArea(PixelRect first, PixelRect second)
+    {
+        var width = Math.Max(0, Math.Min(first.Right, second.Right) - Math.Max(first.X, second.X));
+        var height = Math.Max(0, Math.Min(first.Bottom, second.Bottom) - Math.Max(first.Y, second.Y));
+        return (long)width * height;
     }
 }

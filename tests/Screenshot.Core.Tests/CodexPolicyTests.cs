@@ -72,6 +72,20 @@ public sealed class CodexPolicyTests
         Assert.Throws<ArgumentException>(() => CodexPolicy.TurnParameters("thread-a", Array.Empty<byte>(), model));
     }
 
+    [Fact]
+    public void OptionalInstructionIsAddedWithoutReplacingTheSafeRequest()
+    {
+        var model = CodexPolicy.SelectModel([DefaultModel()]);
+        byte[] header = [137, 80, 78, 71, 13, 10, 26, 10];
+
+        var turn = CodexPolicy.TurnParameters("thread-a", header, model, "Explain each algebra step.");
+        var text = turn.GetProperty("input")[0].GetProperty("text").GetString();
+
+        Assert.StartsWith(AnswerPrompt.Request, text, StringComparison.Ordinal);
+        Assert.Contains("Explain each algebra step.", text, StringComparison.Ordinal);
+        Assert.Throws<ArgumentException>(() => AnswerPrompt.CreateRequest(new string('x', 2001)));
+    }
+
     [Theory]
     [InlineData("https://auth.openai.com/oauth/authorize", true)]
     [InlineData("https://chatgpt.com/", true)]

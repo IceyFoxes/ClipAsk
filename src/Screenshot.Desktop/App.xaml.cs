@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,6 +35,8 @@ public partial class App : System.Windows.Application
     private readonly RequestGeneration generation = new();
     private CancellationTokenSource? answerCancellation;
     private CaptureTiming? timing;
+    private string answerInstruction = string.Empty;
+    private string? selectedModel;
     private bool connected;
     private bool shuttingDown;
     private bool cleanupDone;
@@ -99,6 +103,7 @@ public partial class App : System.Windows.Application
         result.CaptureRequested += () => RunUiAsync(BeginCaptureAsync);
         result.ConnectRequested += () => RunUiAsync(ToggleConnectionAsync);
         result.AnswerRequested += () => RunUiAsync(AnswerCurrentAsync);
+        result.AnswerOptionsRequested += () => RunUiAsync(OpenAnswerOptionsAsync);
         result.StopRequested += () => StopAnswer(true);
         result.DismissRequested += () => StopAnswer(true);
         result.SetWelcome("Capture a question with Ctrl+Alt+S.");
@@ -176,10 +181,16 @@ public partial class App : System.Windows.Application
         currentImage.Freeze();
         overlay?.Close();
         overlay = null;
-        result!.SetPreview(currentImage);
+        var dipScale = 96d / dpi;
+        var layout = ResultLayoutCalculator.Calculate(new(
+            crop.Width * dipScale,
+            crop.Height * dipScale,
+            monitor.WorkArea.Width * dipScale,
+            monitor.WorkArea.Height * dipScale));
+        result!.SetPreview(currentImage, layout);
         result.CopyImageToClipboard();
-        var desiredWidth = (int)Math.Round(ResultWindow.CardWidth * dpi / 96d);
-        var desiredHeight = (int)Math.Round(ResultWindow.CardHeight * dpi / 96d);
+        var desiredWidth = (int)Math.Round(layout.WindowWidth / dipScale);
+        var desiredHeight = (int)Math.Round(layout.WindowHeight / dipScale);
         ShowResultBesideSelection(monitor.WorkArea, crop, desiredWidth, desiredHeight);
         if (originalForeground != IntPtr.Zero)
             NativeMethods.SetForegroundWindow(originalForeground);
@@ -239,7 +250,8 @@ public partial class App : System.Windows.Application
         previous?.Cancel();
         try
         {
-            await foreach (var update in provider!.AnswerAsync(currentPng!, localCancellation.Token, requestTiming).ConfigureAwait(true))
+            var options = new AnswerRequestOptions(answerInstruction, selectedModel);
+            await foreach (var update in provider!.AnswerAsync(currentPng!, options, localCancellation.Token, requestTiming).ConfigureAwait(true))
             {
                 if (!generation.IsCurrent(requestGeneration))
                     return;
@@ -262,6 +274,9 @@ public partial class App : System.Windows.Application
                         break;
                     case AnswerUpdateKind.Status:
                         result?.SetStatus(update.Text);
+                        break;
+                    case AnswerUpdateKind.Model:
+                        result?.SetModel(update.Text);
                         break;
                 }
             }
@@ -300,6 +315,34 @@ public partial class App : System.Windows.Application
         var uri = await provider!.BeginLoginAsync();
         Process.Start(new ProcessStartInfo(uri.ToString()) { UseShellExecute = true });
         result?.SetStatus("Complete sign-in in the system browser");
+    }
+
+    private async Task OpenAnswerOptionsAsync()
+    {
+        if (result is null || provider is null)
+            return;
+        IReadOnlyList<CodexModelSelection> models = Array.Empty<CodexModelSelection>();
+        if (connected)
+        {
+            try
+            {
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                models = await provider.GetAvailableModelsAsync(timeout.Token).ConfigureAwait(true);
+            }
+            catch (Exception exception)
+            {
+                result.SetStatus(DescribeUiException(exception));
+            }
+        }
+
+        var dialog = new AnswerOptionsWindow(answerInstruction, selectedModel, models) { Owner = result };
+        if (dialog.ShowDialog() != true)
+            return;
+        answerInstruction = dialog.Instruction;
+        selectedModel = dialog.SelectedModel;
+        var selected = models.FirstOrDefault(model => model.Model == selectedModel);
+        result.SetModel(selected is null ? "Automatic" : $"{selected.DisplayName} · {selected.ReasoningEffort}");
+        result.SetStatus("Answer options updated");
     }
 
     private async Task RefreshAccountAsync()

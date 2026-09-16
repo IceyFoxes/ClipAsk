@@ -6,27 +6,30 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Screenshot.Core.Capture;
 using Screenshot.Core.Diagnostics;
 
 namespace Screenshot.Desktop;
 
 internal partial class ResultWindow : Window
 {
-    public const double CardWidth = 480;
-    public const double CardHeight = 220;
+    public const double InitialWidth = 420;
+    public const double InitialHeight = 228;
 
     private bool allowClose;
     private bool isConnected;
     private bool isBusy;
     private string accountText = "Disconnected";
+    private string answer = string.Empty;
+    private string modelText = "Automatic";
     private string welcomeText = "Capture a question with Ctrl+Alt+S.";
     private string status = string.Empty;
 
     public ResultWindow()
     {
         InitializeComponent();
-        Width = CardWidth;
-        Height = CardHeight;
+        Width = InitialWidth;
+        Height = InitialHeight;
         ShowActivated = false;
         UpdateControls();
     }
@@ -34,6 +37,7 @@ internal partial class ResultWindow : Window
     public event Action? CaptureRequested;
     public event Action? ConnectRequested;
     public event Action? AnswerRequested;
+    public event Action? AnswerOptionsRequested;
     public event Action? StopRequested;
     public event Action? DismissRequested;
 
@@ -44,35 +48,37 @@ internal partial class ResultWindow : Window
     public Visibility PrimaryActionVisibility => PrimaryActionButton.Visibility;
     public bool IsActionsMenuOpen => ActionsMenu.IsOpen;
 
-    public void SetPreview(BitmapSource source)
+    public void SetPreview(BitmapSource source, ResultLayout layout)
     {
         PreviewImage.Source = source;
-        AnswerText.Text = string.Empty;
+        SetAnswerCore(string.Empty);
         SetTiming(null);
         isBusy = false;
+        ApplyLayout(layout);
         UpdateControls();
     }
 
     public void ClearPreview()
     {
         PreviewImage.Source = null;
-        AnswerText.Text = string.Empty;
+        SetAnswerCore(string.Empty);
         SetTiming(null);
         isBusy = false;
+        ApplyInitialLayout();
         UpdateControls();
     }
 
     public void SetAnswer(string answer)
     {
-        AnswerText.Text = answer;
+        SetAnswerCore(answer);
         UpdateControls();
     }
 
-    public string Answer => AnswerText.Text;
+    public string Answer => answer;
 
     public void ClearAnswer()
     {
-        AnswerText.Text = string.Empty;
+        SetAnswerCore(string.Empty);
         UpdateControls();
     }
 
@@ -101,6 +107,12 @@ internal partial class ResultWindow : Window
         accountText = text;
         isConnected = connected;
         UpdateControls();
+    }
+
+    public void SetModel(string text)
+    {
+        modelText = string.IsNullOrWhiteSpace(text) ? "Automatic" : text;
+        ModelDetailsItem.Header = $"Model: {modelText}";
     }
 
     public void SetTiming(CaptureTiming? timing)
@@ -132,7 +144,7 @@ internal partial class ResultWindow : Window
     {
         try
         {
-            Clipboard.SetText(AnswerText.Text);
+            Clipboard.SetText(answer);
             SetStatus("Answer copied");
         }
         catch (ExternalException)
@@ -156,12 +168,10 @@ internal partial class ResultWindow : Window
     private void UpdateControls()
     {
         var hasPreview = Preview is not null;
-        var hasAnswer = !string.IsNullOrWhiteSpace(AnswerText.Text);
-        HeaderTitle.Text = isBusy ? "Answering…" : hasPreview ? "Answer" : "Screenshot";
-        PreviewColumn.Width = hasPreview ? new GridLength(104) : new GridLength(0);
-        GapColumn.Width = hasPreview ? new GridLength(12) : new GridLength(0);
+        var hasAnswer = !string.IsNullOrWhiteSpace(answer);
         PreviewContainer.Visibility = hasPreview ? Visibility.Visible : Visibility.Collapsed;
         StopButton.Visibility = isBusy ? Visibility.Visible : Visibility.Collapsed;
+        CopyButton.Visibility = isBusy ? Visibility.Collapsed : Visibility.Visible;
         CopyButton.IsEnabled = hasAnswer;
         CopyImageItem.IsEnabled = hasPreview;
         AnswerAgainItem.IsEnabled = hasPreview && isConnected && !isBusy;
@@ -170,25 +180,107 @@ internal partial class ResultWindow : Window
         PrimaryActionButton.Content = !isConnected ? "Connect ChatGPT" : !hasPreview ? "Capture" : "Answer";
         var primaryNeeded = !isBusy && (!isConnected || !hasPreview || !hasAnswer);
         PrimaryActionButton.Visibility = primaryNeeded ? Visibility.Visible : Visibility.Collapsed;
-        if (!hasAnswer && !isBusy)
+        if (!hasAnswer)
         {
-            HintText.Text = !hasPreview ? welcomeText : !isConnected ? "Connect ChatGPT to answer." : "Ready to answer.";
-            HintText.Visibility = Visibility.Visible;
+            HintText.Text = isBusy ? "Looking…" : !hasPreview ? welcomeText : !isConnected ? "Connect ChatGPT to answer." : "Ready to answer.";
+            HintPanel.Visibility = Visibility.Visible;
         }
         else
         {
-            HintText.Visibility = Visibility.Collapsed;
+            HintPanel.Visibility = Visibility.Collapsed;
         }
+        ActivityBar.Visibility = isBusy && !hasAnswer ? Visibility.Visible : Visibility.Collapsed;
         var routine = status is "" or "Ready" or "Response complete" or "Preparing answer…";
-        Footer.Visibility = primaryNeeded || !routine ? Visibility.Visible : Visibility.Collapsed;
+        Footer.Visibility = primaryNeeded || (!isBusy && !routine) ? Visibility.Visible : Visibility.Collapsed;
         StatusText.Text = status;
         StatusText.ToolTip = status;
     }
 
+    private void SetAnswerCore(string value)
+    {
+        answer = value ?? string.Empty;
+        AnswerDocument.Document = AnswerDocumentRenderer.Create(answer);
+    }
+
+    private void ApplyLayout(ResultLayout layout)
+    {
+        Width = layout.WindowWidth;
+        Height = layout.WindowHeight;
+        PreviewContainer.Width = layout.PreviewWidth;
+        PreviewContainer.Height = layout.PreviewHeight;
+        PreviewImage.Width = layout.PreviewWidth;
+        PreviewImage.Height = layout.PreviewHeight;
+        AnswerPane.Width = layout.AnswerWidth;
+        AnswerPane.HorizontalAlignment = HorizontalAlignment.Left;
+
+        if (layout.Mode == ResultLayoutMode.Stacked)
+        {
+            AnswerTopRow.Height = new GridLength(0);
+            FirstRow.Height = new GridLength(layout.PreviewHeight);
+            LayoutGapRow.Height = new GridLength(12);
+            SecondRow.Height = new GridLength(1, GridUnitType.Star);
+            FirstColumn.Width = new GridLength(1, GridUnitType.Star);
+            LayoutGapColumn.Width = new GridLength(0);
+            SecondColumn.Width = new GridLength(0);
+            Grid.SetRow(PreviewContainer, 0);
+            Grid.SetColumn(PreviewContainer, 0);
+            Grid.SetRow(AnswerPane, 2);
+            Grid.SetColumn(AnswerPane, 0);
+        }
+        else
+        {
+            AnswerTopRow.Height = new GridLength(0);
+            FirstRow.Height = new GridLength(1, GridUnitType.Star);
+            LayoutGapRow.Height = new GridLength(0);
+            SecondRow.Height = new GridLength(0);
+            FirstColumn.Width = new GridLength(layout.PreviewWidth);
+            LayoutGapColumn.Width = new GridLength(12);
+            SecondColumn.Width = new GridLength(1, GridUnitType.Star);
+            Grid.SetRow(PreviewContainer, 0);
+            Grid.SetColumn(PreviewContainer, 0);
+            Grid.SetRow(AnswerPane, 0);
+            Grid.SetColumn(AnswerPane, 2);
+        }
+    }
+
+    private void ApplyInitialLayout()
+    {
+        Width = InitialWidth;
+        Height = InitialHeight;
+        FirstRow.Height = new GridLength(1, GridUnitType.Star);
+        LayoutGapRow.Height = new GridLength(0);
+        SecondRow.Height = new GridLength(0);
+        FirstColumn.Width = new GridLength(1, GridUnitType.Star);
+        LayoutGapColumn.Width = new GridLength(0);
+        SecondColumn.Width = new GridLength(0);
+        AnswerTopRow.Height = new GridLength(0);
+        AnswerPane.Width = double.NaN;
+        AnswerPane.HorizontalAlignment = HorizontalAlignment.Stretch;
+        Grid.SetRow(AnswerPane, 0);
+        Grid.SetColumn(AnswerPane, 0);
+    }
+
     private void HeaderMouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ChangedButton == MouseButton.Left)
+        if (e.ChangedButton != MouseButton.Left)
+            return;
+        try
+        {
             DragMove();
+            e.Handled = true;
+        }
+        catch (InvalidOperationException)
+        {
+        }
+    }
+
+    private void WindowKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape)
+            return;
+        Hide();
+        DismissRequested?.Invoke();
+        e.Handled = true;
     }
 
     private void MoreClick(object sender, RoutedEventArgs e)
@@ -211,6 +303,7 @@ internal partial class ResultWindow : Window
     private void CaptureClick(object sender, RoutedEventArgs e) => CaptureRequested?.Invoke();
     private void ConnectClick(object sender, RoutedEventArgs e) => ConnectRequested?.Invoke();
     private void AnswerClick(object sender, RoutedEventArgs e) => AnswerRequested?.Invoke();
+    private void AnswerOptionsClick(object sender, RoutedEventArgs e) => AnswerOptionsRequested?.Invoke();
     private void StopClick(object sender, RoutedEventArgs e) => StopRequested?.Invoke();
     private void CopyImageClick(object sender, RoutedEventArgs e) => CopyImageToClipboard();
     private void CopyAnswerClick(object sender, RoutedEventArgs e) => CopyAnswerToClipboard();
