@@ -13,17 +13,18 @@ The repository is still in preparation. This checklist is not evidence that pack
 ## Remaining release work
 
 - [x] Add reproducible self-contained win-x64 ZIP packaging with the matching pinned Codex runtime.
-- [ ] Audit every executable, library, font, and runtime asset in the final publish output. Packaging includes the known NuGet, Codex, ripgrep/PCRE2, and .NET license/notice material, but the binary-output audit remains a release gate.
+- [x] Audit every executable, library, font, and runtime asset in the first-beta publish output. The audited set is ClipAsk, Markdig, WpfMath/XamlMath and its fonts, the pinned Codex/ripgrep/PCRE2 tree, and the self-contained .NET Desktop Runtime; matching license and notice material is included.
 - [x] Include GPL license text, build metadata, source URL, and a corresponding-source archive pinned to the packaged commit.
 - [x] Add About/license access from the window and tray menus.
-- [ ] Apply the final application icon to the executable, windows, tray, and installer.
+- [x] Apply the final application icon to the executable, windows, tray, installer, and repository branding.
 - [x] Add first-run guidance for left-drag auto-send, right-drag instructions, account limits, privacy, and clipboard behavior.
 - [x] Make hotkey conflicts visible when started in the background.
 - [x] Add a per-user Inno Setup installer definition. It deliberately leaves startup opt-in to the app.
-- [x] Remove the optional startup registry entry on uninstall while retaining user state by default.
+- [x] Remove the optional startup registry entry on uninstall while retaining user state by default; offer an explicit sign-out and local-data cleanup option.
 - [x] Compile the installer and validate a silent install, packaged smoke/provider checks, and uninstall in an isolated folder on the development machine.
 - [ ] Validate interactive install, upgrade, startup, and uninstall on a clean Windows account.
-- [ ] Sign artifacts and verify the publisher and signatures. Record SHA-256 checksums.
+- [x] Record the first-beta signing posture: publish unsigned artifacts with an explicit SmartScreen warning and SHA-256 checksums.
+- [ ] Add trusted signing in a later release through a qualifying open-source signing service, the Microsoft Store, or a verified publisher certificate.
 - [ ] Test on a clean Windows machine without the development SDK, tool folders, or cached credentials.
 - [ ] Test install, managed sign-in, capture/cancel, Markdown/math, minimize/new capture, streaming while dragging, saved directory, startup, upgrade, and uninstall.
 - [ ] Check multiple displays and DPI scales, offline failures, quota exhaustion, and unsupported account/model states.

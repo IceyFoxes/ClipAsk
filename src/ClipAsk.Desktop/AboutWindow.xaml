@@ -1,7 +1,7 @@
 <Window x:Class="ClipAsk.Desktop.AboutWindow" x:ClassModifier="internal"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="About ClipAsk" Width="470" Height="390" WindowStyle="None" ResizeMode="NoResize"
+        Title="About ClipAsk" Icon="pack://application:,,,/Assets/clipask.ico" Width="470" Height="390" WindowStyle="None" ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen" ShowInTaskbar="False" Topmost="True"
         Background="#181B20" Foreground="#F2F4F7"
         FontFamily="Aptos Display, Segoe UI Variable Display, Segoe UI" KeyDown="WindowKeyDown">
@@ -42,7 +42,7 @@
                 <StackPanel>
                     <TextBlock Text="Privacy and account" FontWeight="SemiBold" />
                     <TextBlock Margin="0,5,0,0" Foreground="#AEB6C2" FontSize="12" LineHeight="18" TextWrapping="Wrap"
-                               Text="ClipAsk uses the official managed ChatGPT sign-in and stores no API key. Captures remain local until a completed selection triggers or requests an answer. Requests count toward your ChatGPT account usage." />
+                               Text="ClipAsk stores no password or API key. Its managed sign-in token is protected by Windows Credential Manager so you can remain connected. Captures remain local until a completed selection triggers or requests an answer. Requests count toward your ChatGPT account usage." />
                 </StackPanel>
             </Border>
 

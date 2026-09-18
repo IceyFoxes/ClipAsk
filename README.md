@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/brand/clipask-icon.svg" alt="ClipAsk icon" width="112" />
+</p>
+
 # ClipAsk
 
 **Clip your screen. Ask ChatGPT.**
@@ -71,7 +75,7 @@ bash scripts/package.sh
 
 On native Windows, run `scripts/package.ps1`. Pass `-BuildInstaller` there, or set `BUILD_INSTALLER=1` for the bash launcher, when Inno Setup 6 is installed. Packaging verifies the exact Codex runtime allowlist and hashes, removes symbols, embeds corresponding ClipAsk source, and runs the published executable's synthetic UI and isolated provider checks before creating the portable ZIP. Clean artifacts and SHA-256 files are written under `artifacts/releases`; validation evidence is written under `artifacts/validation`; all build output is ignored by Git. Release packaging rejects tracked changes by default so its embedded source commit identifies the corresponding source. `ALLOW_DIRTY=1` (bash) or `-AllowDirty` (PowerShell) writes only to `artifacts/local-releases` and is for local package testing.
 
-The installer is per-user, does not require elevation, and does not silently enable startup. Startup remains an explicit in-app choice and its registry entry is removed on uninstall. ClipAsk intentionally retains account/runtime state and preferences under `%LOCALAPPDATA%\ClipAsk`; users may remove that directory separately when they want to clear local state. See [the release checklist](docs/releasing.md) before distributing an artifact.
+The installer is per-user, does not require elevation, and does not silently enable startup. Startup remains an explicit in-app choice and its registry entry is removed on uninstall. ChatGPT passwords are never stored by ClipAsk; the managed sign-in token is kept in Windows Credential Manager. By default, uninstall retains account/runtime state and preferences under `%LOCALAPPDATA%\ClipAsk` for a future reinstall. The interactive uninstaller offers an unchecked option to sign out and remove that local data. See [the release checklist](docs/releasing.md) before distributing an artifact.
 
 ## Project structure
 

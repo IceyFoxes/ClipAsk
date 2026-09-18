@@ -1,7 +1,7 @@
 <Window x:Class="ClipAsk.Desktop.ResultWindow" x:ClassModifier="internal"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="ClipAsk" Width="420" Height="228"
+        Title="ClipAsk" Icon="pack://application:,,,/Assets/clipask.ico" Width="420" Height="228"
         WindowStyle="None" ResizeMode="NoResize" ShowActivated="False" ShowInTaskbar="True" Topmost="True"
         UseLayoutRounding="True" SnapsToDevicePixels="True" FontFamily="Aptos Display, Segoe UI Variable Display, Segoe UI"
         Background="#181B20" Foreground="#F2F4F7" KeyDown="WindowKeyDown">

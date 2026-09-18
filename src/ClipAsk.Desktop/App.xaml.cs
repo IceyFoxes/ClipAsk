@@ -31,6 +31,7 @@ public partial class App : System.Windows.Application
     private bool ownsInstanceMutex;
     private HwndSource? hotkeySource;
     private Forms.NotifyIcon? tray;
+    private System.Drawing.Icon? trayIcon;
     private Forms.ToolStripMenuItem? trayStartupItem;
     private ResultWindow? result;
     private AboutWindow? aboutWindow;
@@ -109,6 +110,25 @@ public partial class App : System.Windows.Application
             }));
             return true;
         }
+        if (args[0].Equals("--uninstall-sign-out", StringComparison.OrdinalIgnoreCase) && args.Length == 1)
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(async () =>
+            {
+                try
+                {
+                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                    await using var cleanupProvider = CodexAnswerProvider.CreateDefault();
+                    await cleanupProvider.DisconnectAsync(timeout.Token);
+                    Shutdown();
+                }
+                catch (Exception exception)
+                {
+                    Console.Error.WriteLine(DescribeUiException(exception));
+                    Shutdown(1);
+                }
+            }));
+            return true;
+        }
         return false;
     }
 
@@ -147,9 +167,10 @@ public partial class App : System.Windows.Application
         result.SetStartupEnabled(startupEnabled);
         if (!launchInBackground)
             result.Show();
+        trayIcon = LoadTrayIcon();
         tray = new Forms.NotifyIcon
         {
-            Icon = System.Drawing.SystemIcons.Application,
+            Icon = trayIcon,
             Text = "ClipAsk",
             Visible = true,
             ContextMenuStrip = BuildTrayMenu()
@@ -198,6 +219,15 @@ public partial class App : System.Windows.Application
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => RunUiAsync(ExitAsync));
         return menu;
+    }
+
+    private static System.Drawing.Icon LoadTrayIcon()
+    {
+        var resource = GetResourceStream(new Uri("pack://application:,,,/Assets/clipask.ico", UriKind.Absolute))
+            ?? throw new InvalidOperationException("The embedded ClipAsk icon could not be loaded.");
+        using var stream = resource.Stream;
+        using var source = new System.Drawing.Icon(stream);
+        return (System.Drawing.Icon)source.Clone();
     }
 
     private void ShowAbout()
@@ -709,6 +739,7 @@ public partial class App : System.Windows.Application
                 NativeMethods.UnregisterHotKey(hotkeySource.Handle, HotkeyId);
             hotkeySource?.Dispose();
             tray?.Dispose();
+            trayIcon?.Dispose();
             if (!shuttingDown && provider is not null)
             {
                 provider.StopOwnedProcessForShutdown();

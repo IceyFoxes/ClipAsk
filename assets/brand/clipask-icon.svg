@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">ClipAsk app icon</title>
+  <desc id="desc">Two symmetric screenshot crop corners surrounding an incoming message bubble with an AI glint.</desc>
+
+  <defs>
+    <!-- Explicit silhouettes let the inner notch curve independently while
+         preserving the tighter outer corner from the original design. -->
+    <path id="crop-corner-edge"
+      d="M 176 466
+         A 42 42 0 0 1 134 424
+         V 176
+         A 42 42 0 0 1 176 134
+         H 424
+         A 42 42 0 0 1 424 218
+         H 236
+         Q 218 218 218 236
+         V 424
+         A 42 42 0 0 1 176 466 Z" />
+    <path id="crop-corner-core"
+      d="M 176 454
+         A 30 30 0 0 1 146 424
+         V 176
+         A 30 30 0 0 1 176 146
+         H 424
+         A 30 30 0 0 1 424 206
+         H 220
+         Q 206 206 206 220
+         V 424
+         A 30 30 0 0 1 176 454 Z" />
+  </defs>
+
+  <!-- Exact rotational counterparts: equal horizontal and vertical arms. -->
+  <g>
+    <use href="#crop-corner-edge" fill="#334155" />
+    <use href="#crop-corner-core" fill="#E2E8F0" />
+
+    <use href="#crop-corner-edge" transform="rotate(180 512 512)" fill="#334155" />
+    <use href="#crop-corner-core" transform="rotate(180 512 512)" fill="#E2E8F0" />
+  </g>
+
+  <!-- Squarer incoming-message bubble; tail is merged into the lower-left corner. -->
+  <g transform="translate(-12 0)">
+    <path
+      fill="#4F46E5"
+      d="M 410 330
+         H 675
+         Q 745 330 745 400
+         V 565
+         Q 745 635 675 635
+         H 420
+         C 382 642 348 657 318 674
+         Q 308 680 314 663
+         C 326 632 334 606 338 588
+         Q 330 568 330 540
+         V 410
+         Q 330 330 410 330
+         Z" />
+
+    <!-- Larger, slightly sharper four-point glint. -->
+    <path
+      fill="#FBBF24"
+      d="M 540 382
+         C 550 432 580 465 642 480
+         C 580 495 550 528 540 586
+         C 530 528 500 495 438 480
+         C 500 465 530 432 540 382
+         Z" />
+  </g>
+</svg>

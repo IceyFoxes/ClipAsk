@@ -13,8 +13,10 @@
     <Version>0.1.0</Version>
     <EnableDefaultApplicationDefinition>true</EnableDefaultApplicationDefinition>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\..\assets\brand\clipask.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Resource Include="..\..\assets\brand\clipask.ico" Link="Assets\clipask.ico" />
     <Content Include="..\..\LICENSE;..\..\THIRD-PARTY-NOTICES.md" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\..\licenses\**\*" Link="licenses\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <ProjectReference Include="..\ClipAsk.Core\ClipAsk.Core.csproj" />

@@ -23,6 +23,19 @@ public sealed class CodexAnswerProviderTests
     }
 
     [Fact]
+    public async Task DisconnectStartsProviderAndClearsStoredAccount()
+    {
+        await using var host = new FakeHost();
+        await using var provider = CreateProvider(host);
+        var disconnect = provider.DisconnectAsync(TestContext.Current.CancellationToken);
+        await CompleteInitializeAsync(host);
+        var logout = await host.NextAsync();
+        Assert.Equal("account/logout", logout.GetProperty("method").GetString());
+        host.Respond(logout, Json("{}"));
+        await disconnect;
+    }
+
+    [Fact]
     public async Task ReadsChatGptRateLimitsFromTheAccountEndpoint()
     {
         await using var host = new FakeHost();

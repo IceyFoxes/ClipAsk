@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" role="img" aria-labelledby="title desc">
+  <title id="title">ClipAsk small app icon</title>
+  <desc id="desc">Screenshot crop corners around an AI response bubble.</desc>
+  <defs>
+    <path id="small-corner"
+      d="M 2.5 6.75
+         A .75 .75 0 0 1 1.75 6
+         V 2.5
+         A .75 .75 0 0 1 2.5 1.75
+         H 6
+         A .75 .75 0 0 1 6 3.25
+         H 3.55
+         Q 3.25 3.25 3.25 3.55
+         V 6
+         A .75 .75 0 0 1 2.5 6.75 Z" />
+  </defs>
+
+  <!-- Simplified single-color brackets for 16–24 px rendering. -->
+  <g fill="#64748B">
+    <use href="#small-corner" />
+    <use href="#small-corner" transform="rotate(180 8 8)" />
+  </g>
+
+  <!-- Match the master's optical centering: the bubble and glint move
+       together while the symmetric crop brackets stay fixed. -->
+  <g transform="translate(-0.5 0)">
+    <path
+      fill="#4F46E5"
+      transform="translate(8.525 0) scale(1.125 1) translate(-8.525 0)"
+      d="M 6.3 5.05
+         H 10.7
+         Q 11.8 5.05 11.8 6.15
+         V 9.05
+         Q 11.8 10.15 10.7 10.15
+         H 7.0
+         C 6.45 10.3 5.9 10.55 5.25 10.9
+         C 5.55 10.35 5.65 10.0 5.65 9.55
+         V 6.0
+         Q 5.65 5.05 6.3 5.05
+         Z" />
+
+    <path
+      fill="#FBBF24"
+      d="M 8.65 6.05
+         C 8.8 6.85 9.25 7.25 10.15 7.5
+         C 9.25 7.75 8.8 8.2 8.65 9.1
+         C 8.5 8.2 8.05 7.75 7.15 7.5
+         C 8.05 7.25 8.5 6.85 8.65 6.05
+         Z" />
+  </g>
+</svg>

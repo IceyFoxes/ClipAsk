@@ -14,6 +14,7 @@ ClipAsk sends requests through the official Codex runtime using your ChatGPT acc
 
 - Runtime state defaults to `%LOCALAPPDATA%\ClipAsk`, including the isolated Codex home and workspace. A developer can override it with `CLIPASK_STATE_DIR`.
 - Authentication uses the runtime's managed sign-in and keyring credential storage. ClipAsk does not request API keys or copy credentials from other installations.
+- The interactive uninstaller keeps account/runtime state by default and offers an unchecked option to sign out and remove `%LOCALAPPDATA%\ClipAsk`. Saved screenshots outside that directory are not deleted.
 - The latest capture and response are held for the active window. There is no app-level history browser. Provider threads are requested as ephemeral and runtime history persistence is disabled; this is not a claim that the remote provider retains no data or that runtime diagnostic files can never exist.
 - Save image as writes a PNG only when requested. `last-save-folder.txt` remembers the destination directory. The old `%LOCALAPPDATA%\Screenshot` preference is read as a fallback after the rename; credentials are not migrated.
 - The Windows clipboard can retain captures independently of the app. Windows clipboard history or sync, if enabled by you, follows your Windows settings.

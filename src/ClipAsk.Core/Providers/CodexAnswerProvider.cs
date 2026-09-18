@@ -87,6 +87,7 @@ public sealed class CodexAnswerProvider : IAnswerProvider
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         await CancelActiveAnswerAsync(cancellationToken).ConfigureAwait(false);
+        await EnsureStartedAsync(cancellationToken).ConfigureAwait(false);
         await lifecycleGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
