@@ -58,6 +58,7 @@ internal partial class ResultWindow : Window
     public event Action? ConnectRequested;
     public event Action? AnswerRequested;
     public event Action? AnswerOptionsRequested;
+    public event Action? AboutRequested;
     public event Action? SaveImageRequested;
     public event Action<string>? InstructionSubmitted;
     public event Action<bool>? StartupChanged;
@@ -585,6 +586,7 @@ internal partial class ResultWindow : Window
     private void ConnectClick(object sender, RoutedEventArgs e) => ConnectRequested?.Invoke();
     private void AnswerClick(object sender, RoutedEventArgs e) => AnswerRequested?.Invoke();
     private void AnswerOptionsClick(object sender, RoutedEventArgs e) => AnswerOptionsRequested?.Invoke();
+    private void AboutClick(object sender, RoutedEventArgs e) => AboutRequested?.Invoke();
     private void StartupClick(object sender, RoutedEventArgs e) => StartupChanged?.Invoke(!startupEnabled);
     private void StopClick(object sender, RoutedEventArgs e) => StopRequested?.Invoke();
     private void CopyImageClick(object sender, RoutedEventArgs e) => CopyImageToClipboard();

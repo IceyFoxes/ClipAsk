@@ -42,5 +42,8 @@ Source: "{#MySourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdir
 [Icons]
 Name: "{autoprograms}\ClipAsk"; Filename: "{app}\ClipAsk.exe"
 
+[Registry]
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "ClipAsk"; Flags: uninsdeletevalue
+
 [Run]
 Filename: "{app}\ClipAsk.exe"; Description: "Launch ClipAsk"; Flags: nowait postinstall skipifsilent

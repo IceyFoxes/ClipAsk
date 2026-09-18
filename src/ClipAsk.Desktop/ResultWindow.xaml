@@ -291,6 +291,8 @@
                                 <MenuItem x:Name="UsageDetailsItem" Header="Usage: unavailable" IsEnabled="False" Style="{StaticResource ActionsMenuItem}" />
                                 <MenuItem x:Name="ResetDetailsItem" Header="Reset: —" IsEnabled="False" Style="{StaticResource ActionsMenuItem}" />
                             </MenuItem>
+                            <Separator Style="{StaticResource ActionsMenuSeparator}" />
+                            <MenuItem Header="About ClipAsk &amp; licenses…" Click="AboutClick" Style="{StaticResource ActionsMenuItem}" />
                         </ContextMenu>
                     </Button.ContextMenu>
                 </Button>

@@ -46,6 +46,12 @@ internal static class SmokeRenderer
         SaveLocationStore.Remember(outputDirectory, saveLocationState);
         if (!string.Equals(SaveLocationStore.Read(saveLocationState), Path.GetFullPath(outputDirectory), StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("The last successful save folder did not persist.");
+        var firstRunState = Path.Combine(outputDirectory, "first-run-state", Guid.NewGuid().ToString("N"));
+        if (!FirstRunStateStore.ShouldShow(firstRunState))
+            throw new InvalidOperationException("A new profile did not request first-run guidance.");
+        FirstRunStateStore.MarkSeen(firstRunState);
+        if (FirstRunStateStore.ShouldShow(firstRunState))
+            throw new InvalidOperationException("First-run guidance was not remembered after dismissal.");
 
         var window = new ResultWindow();
         if (!window.ShowInTaskbar)
@@ -137,6 +143,17 @@ internal static class SmokeRenderer
             [new CodexModelSelection("gpt-5.6-terra", "low", "GPT-5.6 Terra")]);
         Save(RenderWindow(options), Path.Combine(outputDirectory, "answer-options.png"));
 
+        var firstRun = new FirstRunWindow();
+        if (!firstRun.AccountGuidance.Contains("official managed sign-in", StringComparison.Ordinal) ||
+            !firstRun.AccountGuidance.Contains("stay local", StringComparison.Ordinal))
+            throw new InvalidOperationException("First-run account and privacy guidance is incomplete.");
+        Save(RenderWindow(firstRun), Path.Combine(outputDirectory, "first-run-guidance.png"));
+
+        var about = new AboutWindow();
+        if (!about.LicenseSummary.Contains("GPL-3.0-only", StringComparison.Ordinal))
+            throw new InvalidOperationException("About did not identify the ClipAsk license.");
+        Save(RenderWindow(about), Path.Combine(outputDirectory, "about-licenses.png"));
+
         var overlayCancelled = 0;
         var overlayClosed = false;
         var overlay = new CaptureOverlay(source, new System.Drawing.Rectangle(-32000, -32000, 800, 300), (_, _) => { }, () => overlayCancelled++);
@@ -163,6 +180,8 @@ internal static class SmokeRenderer
             latexParenthesesResponse = "latex-parentheses-response.png",
             promptedCapture = "prompted-capture.png",
             answerOptions = "answer-options.png",
+            firstRunGuidance = "first-run-guidance.png",
+            aboutLicenses = "about-licenses.png",
             answer = "42.\n17 + 25 = 42.",
             actualResultWindow = true,
             previewPixelWidth,
@@ -181,7 +200,9 @@ internal static class SmokeRenderer
             overlayVisibleAfterCancel,
             overlayCancelledOnce = overlayCancelled == 1,
             overlaySecondCancelNoDuplicate = overlayCancelled == 1,
-            startupCommandQuoted = true
+            startupCommandQuoted = true,
+            firstRunRemembered = true,
+            aboutLicenseShown = true
         });
         File.WriteAllText(Path.Combine(outputDirectory, "smoke-diagnostics.json"), diagnostics);
     }

@@ -21,12 +21,19 @@ namespace ClipAsk.Desktop;
 public partial class App : System.Windows.Application
 {
     private const int HotkeyId = 1901;
+
+    static App()
+    {
+        Forms.Application.SetHighDpiMode(Forms.HighDpiMode.PerMonitorV2);
+    }
+
     private Mutex? instanceMutex;
     private bool ownsInstanceMutex;
     private HwndSource? hotkeySource;
     private Forms.NotifyIcon? tray;
     private Forms.ToolStripMenuItem? trayStartupItem;
     private ResultWindow? result;
+    private AboutWindow? aboutWindow;
     private CaptureOverlay? overlay;
     private CodexAnswerProvider? provider;
     private BitmapSource? currentImage;
@@ -116,6 +123,7 @@ public partial class App : System.Windows.Application
         result.ConnectRequested += () => RunUiAsync(ToggleConnectionAsync);
         result.AnswerRequested += () => RunUiAsync(AnswerCurrentAsync);
         result.AnswerOptionsRequested += () => RunUiAsync(OpenAnswerOptionsAsync);
+        result.AboutRequested += ShowAbout;
         result.SaveImageRequested += () => RunUiAsync(SaveCurrentImageAsync);
         result.InstructionSubmitted += instruction => RunUiAsync(() => SubmitInstructionAsync(instruction));
         result.StartupChanged += SetStartupEnabled;
@@ -156,8 +164,20 @@ public partial class App : System.Windows.Application
         });
         hotkeySource.AddHook(HotkeyWindowProc);
         if (!NativeMethods.RegisterHotKey(hotkeySource.Handle, HotkeyId, NativeMethods.ModControl | NativeMethods.ModAlt | NativeMethods.ModNoRepeat, (uint)System.Windows.Forms.Keys.S))
+        {
             result.SetStatus("Ctrl+Alt+S is unavailable; use Capture from the tray.");
+            tray.Text = "ClipAsk — shortcut unavailable";
+            if (launchInBackground)
+            {
+                tray.BalloonTipTitle = "ClipAsk shortcut unavailable";
+                tray.BalloonTipText = "Ctrl+Alt+S is already in use. Choose Capture from the ClipAsk tray menu.";
+                tray.BalloonTipIcon = Forms.ToolTipIcon.Warning;
+                tray.ShowBalloonTip(8000);
+            }
+        }
         _ = RefreshAccountAsync();
+        if (!launchInBackground && FirstRunStateStore.ShouldShow())
+            Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(ShowFirstRunGuidance));
     }
 
     private Forms.ContextMenuStrip BuildTrayMenu()
@@ -174,8 +194,37 @@ public partial class App : System.Windows.Application
         };
         trayStartupItem.Click += (_, _) => SetStartupEnabled(!startupEnabled);
         menu.Items.Add(trayStartupItem);
+        menu.Items.Add("About ClipAsk & licenses…", null, (_, _) => ShowAbout());
+        menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => RunUiAsync(ExitAsync));
         return menu;
+    }
+
+    private void ShowAbout()
+    {
+        if (aboutWindow is not null)
+        {
+            aboutWindow.Activate();
+            return;
+        }
+        aboutWindow = new AboutWindow();
+        if (result?.IsVisible == true)
+        {
+            aboutWindow.Owner = result;
+            aboutWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        }
+        aboutWindow.Closed += (_, _) => aboutWindow = null;
+        aboutWindow.Show();
+        aboutWindow.Activate();
+    }
+
+    private void ShowFirstRunGuidance()
+    {
+        if (result is null || !FirstRunStateStore.ShouldShow())
+            return;
+        var welcome = new FirstRunWindow { Owner = result };
+        welcome.Closed += (_, _) => FirstRunStateStore.MarkSeen();
+        welcome.ShowDialog();
     }
 
     private void SetStartupEnabled(bool enabled)

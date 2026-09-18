@@ -69,9 +69,9 @@ The release package is self-contained, so end users do not need to install .NET 
 bash scripts/package.sh
 ```
 
-On native Windows, run `scripts/package.ps1`. Pass `-BuildInstaller` there, or set `BUILD_INSTALLER=1` for the bash launcher, when Inno Setup 6 is installed. The portable ZIP, optional installer, and SHA-256 files are written under `artifacts/releases`; build output is ignored by Git. Release packaging rejects tracked changes by default so its embedded source commit identifies the corresponding source. `ALLOW_DIRTY=1` (bash) or `-AllowDirty` (PowerShell) is only for local package testing.
+On native Windows, run `scripts/package.ps1`. Pass `-BuildInstaller` there, or set `BUILD_INSTALLER=1` for the bash launcher, when Inno Setup 6 is installed. Packaging verifies the exact Codex runtime allowlist and hashes, removes symbols, embeds corresponding ClipAsk source, and runs the published executable's synthetic UI and isolated provider checks before creating the portable ZIP. Clean artifacts and SHA-256 files are written under `artifacts/releases`; validation evidence is written under `artifacts/validation`; all build output is ignored by Git. Release packaging rejects tracked changes by default so its embedded source commit identifies the corresponding source. `ALLOW_DIRTY=1` (bash) or `-AllowDirty` (PowerShell) writes only to `artifacts/local-releases` and is for local package testing.
 
-The installer is per-user, does not require elevation, and does not silently enable startup. Startup remains an explicit in-app choice. See [the release checklist](docs/releasing.md) before distributing an artifact.
+The installer is per-user, does not require elevation, and does not silently enable startup. Startup remains an explicit in-app choice and its registry entry is removed on uninstall. ClipAsk intentionally retains account/runtime state and preferences under `%LOCALAPPDATA%\ClipAsk`; users may remove that directory separately when they want to clear local state. See [the release checklist](docs/releasing.md) before distributing an artifact.
 
 ## Project structure
 
