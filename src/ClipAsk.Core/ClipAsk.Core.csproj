@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>ClipAsk.Core</AssemblyName>
+    <RootNamespace>ClipAsk.Core</RootNamespace>
+  </PropertyGroup>
+</Project>

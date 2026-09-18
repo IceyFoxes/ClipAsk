@@ -1,0 +1,234 @@
+using System;
+using System.IO;
+using System.Text.Json;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
+using ClipAsk.Core.Capture;
+using ClipAsk.Core.Providers;
+
+namespace ClipAsk.Desktop;
+
+internal static class SmokeRenderer
+{
+    private const string UnicodeAnswer = "“42” — that’s the answer…";
+    private const string ThreePhaseCommitAnswer = """
+        The modified step 4(c) is unsafe because it can cause some participants to commit while others later abort.
+
+        ## Counterexample
+
+        1. Participants include \(P_1,P_2,P_3\). Initially, \(P_1\) is in `PRECOMMIT`, while \(P_2,P_3\) are in `READY`.
+        2. The new coordinator applies modified 4(c) and sends **Global-commit**.
+        3. Only \(P_1\) receives it and commits; the coordinator then crashes.
+        4. \(P_2\) and \(P_3\), unable to communicate with \(P_1\), elect another coordinator.
+        5. Their states are both `READY`. Since no reachable participant is in `PRECOMMIT` or `COMMIT`, step 4(b) makes them abort.
+
+        Thus \(P_1\) commits while \(P_2,P_3\) abort, violating atomicity.
+
+        The original step 4(c) prevents this by first moving every `READY` participant to `PRECOMMIT` and collecting acknowledgements before broadcasting **Global-commit**. Consequently, once any participant can commit, the remaining participants cannot subsequently use the “no `PRECOMMIT`” rule to abort.
+        """;
+
+    public static void Run(string outputDirectory)
+    {
+        Directory.CreateDirectory(outputDirectory);
+        var source = CreateSource();
+        Save(source, Path.Combine(outputDirectory, "smoke-source.png"));
+        var normalizedMath = AnswerDocumentRenderer.NormalizeMathDelimiters("Math \\(P_1\\), inline `\\(literal\\)`, and fenced:\n```text\n\\(literal\\)\n```");
+        if (!normalizedMath.Contains("Math $P_1$", StringComparison.Ordinal) ||
+            !normalizedMath.Contains("`\\(literal\\)`", StringComparison.Ordinal) ||
+            !normalizedMath.Contains("```text\n\\(literal\\)\n```", StringComparison.Ordinal))
+            throw new InvalidOperationException("Alternate LaTeX delimiters were not normalized safely around code.");
+        var startupCommand = StartupRegistration.BuildCommand(@"C:\Program Files\ClipAsk\ClipAsk.exe");
+        if (startupCommand != "\"C:\\Program Files\\ClipAsk\\ClipAsk.exe\" --startup")
+            throw new InvalidOperationException("Startup registration command was not quoted safely.");
+        var saveLocationState = Path.Combine(outputDirectory, "save-location-state");
+        SaveLocationStore.Remember(outputDirectory, saveLocationState);
+        if (!string.Equals(SaveLocationStore.Read(saveLocationState), Path.GetFullPath(outputDirectory), StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("The last successful save folder did not persist.");
+
+        var window = new ResultWindow();
+        if (!window.ShowInTaskbar)
+            throw new InvalidOperationException("ResultWindow must be available from the taskbar when minimized.");
+        var dismissed = false;
+        window.DismissRequested += () => dismissed = true;
+        window.SetPreview(source, ResultLayoutCalculator.Calculate(new(800, 300, 1920, 1080)));
+        window.SetAccount("ChatGPT · free", true);
+        window.PrepareImageActionsForSmoke();
+        if (!window.IsActionsMenuTargetingPreview)
+            throw new InvalidOperationException("The screenshot preview did not target the shared actions menu.");
+        var saveImageEnabled = window.IsSaveImageEnabled;
+        if (!saveImageEnabled)
+            throw new InvalidOperationException("Save image must be enabled when a capture is present.");
+        window.SetAnswer("42.\n17 + 25 = 42.", true);
+        window.SetStatus("Demo - not an AI response");
+        var compact = RenderWindow(window);
+        var previewPixelWidth = window.Preview?.PixelWidth ?? 0;
+        var previewPixelHeight = window.Preview?.PixelHeight ?? 0;
+        if (window.Answer != "42.\n17 + 25 = 42." || previewPixelWidth != 800 || previewPixelHeight != 300 || !window.IsCopyEnabled || window.StopVisibility != Visibility.Collapsed || window.PrimaryActionVisibility != Visibility.Collapsed || window.IsActionsMenuOpen)
+            throw new InvalidOperationException("Compact ResultWindow smoke state did not match expected completed-card state.");
+        Save(compact, Path.Combine(outputDirectory, "smoke-render.png"));
+
+        window.SetAnswer(UnicodeAnswer, true);
+        window.SetStatus("Demo - not an AI response");
+        if (window.Answer != UnicodeAnswer)
+            throw new InvalidOperationException("Unicode smoke answer did not round-trip.");
+        Save(RenderWindow(window), Path.Combine(outputDirectory, "compact-unicode.png"));
+
+        window.DismissForSmoke();
+        if (!dismissed)
+            throw new InvalidOperationException("ResultWindow dismiss event did not fire.");
+
+        var tallSource = CreateSource(450, 1200, "Explain this tall panel");
+        window.SetPreview(tallSource, ResultLayoutCalculator.Calculate(new(450, 1200, 1920, 1080)));
+        window.SetAccount("ChatGPT · free", true);
+        window.SetStatus("Asking ChatGPT…");
+        window.SetBusy(true);
+        Save(RenderWindow(window), Path.Combine(outputDirectory, "split-preparing.png"));
+        window.SetAnswer("This layout keeps the tall capture readable while reserving a stable answer column.", true);
+        window.SetBusy(false);
+        window.SetStatus("Response complete");
+        Save(RenderWindow(window), Path.Combine(outputDirectory, "split-complete.png"));
+
+        var stripSource = CreateSource(1600, 120, "What does this banner mean?");
+        window.SetPreview(stripSource, ResultLayoutCalculator.Calculate(new(1600, 120, 1920, 1080)));
+        window.SetAnswer("## Diagnosis\n\n**Result:** The value is $17 + 25 = 42$.\n\n- Preserves *emphasis*\n- Renders `inline code`\n\n> Use the fenced example when copying.\n\n```csharp\nvar answer = 17 + 25;\n```\n\n| Input | Output |\n| --- | ---: |\n| 17 + 25 | **42** |", true);
+        window.SetStatus("Response complete");
+        Save(RenderWindow(window), Path.Combine(outputDirectory, "formatted-complete.png"));
+        window.SetAnswer("```csharp\nvar answer = 17 + 25;\n```\n\n| Input | Output |\n| --- | ---: |\n| 17 + 25 | **42** |", true);
+        Save(RenderWindow(window), Path.Combine(outputDirectory, "formatted-code-table.png"));
+
+        window.ClearAnswer();
+        window.SetBusy(true);
+        window.BeginWindowMoveForSmoke();
+        window.SetAnswer(ThreePhaseCommitAnswer, false);
+        var streamingHeightBeforeLayout = window.Height;
+        window.EndWindowMoveForSmoke();
+        var streamingRender = RenderWindow(window);
+        if (window.Height <= streamingHeightBeforeLayout)
+            throw new InvalidOperationException("A long streaming response did not expand after a window move completed.");
+        Save(streamingRender, Path.Combine(outputDirectory, "streaming-expanded.png"));
+        window.SetAnswer(ThreePhaseCommitAnswer, true);
+        window.SetBusy(false);
+        Save(RenderWindow(window), Path.Combine(outputDirectory, "latex-parentheses-response.png"));
+
+        window.SetPreview(source, ResultLayoutCalculator.Calculate(new(800, 300, 1920, 1080)));
+        window.SetAccount("ChatGPT · free", true);
+        var unpromptedHeight = window.Height;
+        window.BeginInstructionEntry(true);
+        if (window.InstructionComposerVisibility != Visibility.Visible || window.IsInstructionSendEnabled || window.Height >= unpromptedHeight)
+            throw new InvalidOperationException("Prompted capture smoke state did not begin with an empty instruction.");
+        window.SetInstructionForSmoke("Explain the highlighted error and suggest a fix.");
+        if (!window.IsInstructionSendEnabled)
+            throw new InvalidOperationException("Prompted capture smoke state did not enable Send for a valid instruction.");
+        Save(RenderWindow(window), Path.Combine(outputDirectory, "prompted-capture.png"));
+
+        window.ClearPreview();
+        window.SetAccount("Disconnected", false);
+        window.SetWelcome("Select anything on screen with Ctrl+Alt+S.");
+        window.SetStatus("Ready");
+        Save(RenderWindow(window), Path.Combine(outputDirectory, "compact-initial.png"));
+        window.DismissForSmoke();
+
+        var options = new AnswerOptionsWindow(
+            "Explain each step and keep the answer concise.",
+            null,
+            new CodexModelSelection("gpt-5.6-terra", "low", "GPT-5.6 Terra"),
+            [new CodexModelSelection("gpt-5.6-terra", "low", "GPT-5.6 Terra")]);
+        Save(RenderWindow(options), Path.Combine(outputDirectory, "answer-options.png"));
+
+        var overlayCancelled = 0;
+        var overlayClosed = false;
+        var overlay = new CaptureOverlay(source, new System.Drawing.Rectangle(-32000, -32000, 800, 300), (_, _) => { }, () => overlayCancelled++);
+        overlay.ShowActivated = false;
+        overlay.Closed += (_, _) => overlayClosed = true;
+        overlay.Show();
+        overlay.CancelSelection();
+        overlay.CancelSelection();
+        var overlayVisibleAfterCancel = overlay.IsVisible;
+        if (!overlayClosed || overlayVisibleAfterCancel || overlayCancelled != 1)
+            throw new InvalidOperationException("CaptureOverlay smoke cancellation did not close exactly once.");
+        var diagnostics = JsonSerializer.Serialize(new
+        {
+            passed = true,
+            source = "smoke-source.png",
+            render = "smoke-render.png",
+            compactUnicode = "compact-unicode.png",
+            compactInitial = "compact-initial.png",
+            splitPreparing = "split-preparing.png",
+            splitComplete = "split-complete.png",
+            formattedComplete = "formatted-complete.png",
+            formattedCodeTable = "formatted-code-table.png",
+            streamingExpanded = "streaming-expanded.png",
+            latexParenthesesResponse = "latex-parentheses-response.png",
+            promptedCapture = "prompted-capture.png",
+            answerOptions = "answer-options.png",
+            answer = "42.\n17 + 25 = 42.",
+            actualResultWindow = true,
+            previewPixelWidth,
+            previewPixelHeight,
+            copyEnabled = true,
+            stopCollapsed = true,
+            primaryCollapsed = true,
+            actionsMenuClosed = true,
+            showInTaskbar = true,
+            saveImageEnabled,
+            saveLocationRemembered = true,
+            streamingExpandedAfterMove = true,
+            dismissed,
+            reusable = window.Preview is null || window.Preview.PixelWidth == 800,
+            overlayClosed,
+            overlayVisibleAfterCancel,
+            overlayCancelledOnce = overlayCancelled == 1,
+            overlaySecondCancelNoDuplicate = overlayCancelled == 1,
+            startupCommandQuoted = true
+        });
+        File.WriteAllText(Path.Combine(outputDirectory, "smoke-diagnostics.json"), diagnostics);
+    }
+
+    private static RenderTargetBitmap RenderWindow(Window window)
+    {
+        var content = (FrameworkElement)window.Content;
+        content.Measure(new Size(window.Width, window.Height));
+        content.Arrange(new Rect(0, 0, window.Width, window.Height));
+        content.UpdateLayout();
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.Loaded);
+        var width = window.Width;
+        var height = window.Height;
+        content.Measure(new Size(width, height));
+        content.Arrange(new Rect(0, 0, width, height));
+        content.UpdateLayout();
+        if (content.ActualWidth <= 0 || content.ActualHeight <= 0)
+            throw new InvalidOperationException("ResultWindow content did not measure as expected.");
+        var render = new RenderTargetBitmap((int)Math.Ceiling(width), (int)Math.Ceiling(height), 96, 96, PixelFormats.Pbgra32);
+        render.Render(content);
+        render.Freeze();
+        return render;
+    }
+
+    private static RenderTargetBitmap CreateSource() => CreateSource(800, 300, "What is 17 + 25?");
+
+    private static RenderTargetBitmap CreateSource(int width, int height, string text)
+    {
+        var source = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+        var sourceVisual = new DrawingVisual();
+        using (var drawing = sourceVisual.RenderOpen())
+        {
+            drawing.DrawRectangle(Brushes.White, null, new Rect(0, 0, width, height));
+            var typeface = new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+            var fontSize = Math.Min(48, Math.Max(18, height * 0.16));
+            drawing.DrawText(new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, fontSize, Brushes.Black, 1), new Point(24, Math.Max(24, height * 0.20)));
+        }
+        source.Render(sourceVisual);
+        source.Freeze();
+        return source;
+    }
+
+    private static void Save(BitmapSource bitmap, string path)
+    {
+        using var stream = File.Create(path);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        encoder.Save(stream);
+    }
+}

@@ -1,28 +1,34 @@
-# Result Experience Design
+# ClipAsk Result Experience
 
 ## Status
 
-Implementation in progress. The result surface now uses tested adaptive stacked/split geometry, proportional previews, edge-aware placement, headerless controls, and stable preparing/streaming states. Native system-theme materials, backdrop integration, motion, and the full accessibility verification matrix remain to be implemented.
+Implementation in progress. The result surface now uses tested adaptive stacked/split geometry, proportional previews, capture-monitor centering, a compact draggable header, bounded growth while streaming or after a manual move, taskbar minimization, explicit PNG saving with a remembered destination folder, and Markdown/LaTeX response rendering. Native system-theme materials, backdrop integration, motion, and the full accessibility verification matrix remain to be implemented.
 
 ## Product thesis
 
-**The screenshot is the request. The answer stays attached.**
+**Select anything. Ask only when you need to.**
 
-The product is not a small chat application. It removes the context switch, paste, and prompt-writing steps from a familiar screenshot gesture:
+ClipAsk is a screenshot-to-response utility connected to the user's ChatGPT account, not a small chat application. Its default path removes the context switch, paste, and prompt-writing steps from a familiar screenshot gesture:
 
 ```text
-AI capture shortcut → select → release → answer appears beside the selection
+Ctrl+Alt+S → left-drag → release → useful response appears centered on the capture monitor
+```
+
+When the picture alone is not enough, the same gesture has an intentional alternate path:
+
+```text
+Ctrl+Alt+S → right-drag → add one instruction → response appears centered on the capture monitor
 ```
 
 The experience must feel lighter than opening an AI chat even while remote inference is still running. It should communicate immediacy through spatial continuity and honest feedback, not fake progress or decorative motion.
 
 ## Audience and promise
 
-The initial audience is people who repeatedly encounter self-contained questions, errors, charts, interfaces, or passages on screen and want a direct explanation or answer without leaving their current task.
+The initial audience is people who repeatedly encounter questions, errors, charts, interfaces, images, or passages on screen and want a useful response without leaving their current task.
 
 The promise is:
 
-> Take a screenshot. Get the answer right there.
+> Select anything on screen. Get a useful response right there.
 
 This requires the product to be understandable without onboarding, quiet when not needed, trustworthy about uploads, and visually polished enough that installing it feels worthwhile.
 
@@ -41,7 +47,7 @@ This requires the product to be understandable without onboarding, quiet when no
 - A chat transcript or conversation history.
 - Follow-up composition as a primary interaction.
 - OCR tools, screenshot editing, annotations, or local models.
-- Multiple providers or a model selector in the primary capture path. Eligible account-advertised models may be chosen in the secondary Answer options surface.
+- Multiple providers or a model selector in the primary capture path. Eligible account-advertised models may be chosen in the secondary Response options surface.
 - Speculative uploads before the user releases a valid selection.
 - Changes to ordinary Print Screen behavior.
 - Hiding provider latency with fake percentages or fabricated stages.
@@ -58,7 +64,7 @@ The image must never be distorted or forced into a generic square. The capture's
 
 ### Spatial continuity
 
-The result originates at the selected region and is placed against one of its edges. It should not open in the center of the display or steal focus. The relationship between source and answer should remain obvious after the selection overlay disappears.
+The result opens in the center of the work area on the monitor where the screenshot was captured. It remains centered through automatic response-height changes unless the user drags it, and automatic captures do not steal focus. The captured preview preserves the relationship between source and response after the selection overlay disappears.
 
 ### Calm during real latency
 
@@ -70,7 +76,7 @@ Observed time to first text is approximately four to six seconds and is primaril
 
 ### Trust by default
 
-The selected image remains local until release starts the answer request. Connection and account details stay available but out of the main path. Errors are stated plainly. The UI must not imply that cancellation can undo an image already sent.
+The selected image remains local until the user commits the applicable action: releasing a left-drag for automatic analysis, or sending the instruction after a right-drag. Connection and account details stay available but out of the main path. Errors are stated plainly. The UI must not imply that cancellation can undo an image already sent.
 
 ## Core interaction
 
@@ -78,13 +84,21 @@ The selected image remains local until release starts the answer request. Connec
 
 1. The user presses `Ctrl+Alt+S`.
 2. The current display freezes under the selection overlay.
-3. The user drags a region.
+3. The user left-drags a region for automatic analysis.
 4. On release, the crop is committed and copied to the clipboard.
 5. The result surface appears beside the crop immediately.
-6. PNG encoding and the answer request proceed without another click.
+6. PNG encoding and the analysis request proceed without another click.
 7. A restrained activity state occupies the reserved answer plane.
 8. The first answer text replaces that state as soon as it arrives.
 9. The user may copy, dismiss, retry, or start another capture.
+
+### Prompted path
+
+1. The user right-drags a region in the same overlay.
+2. On release, ClipAsk displays the crop with a focused one-line instruction field.
+3. The crop remains local while the user types; no model request starts yet.
+4. Pressing `Enter` or **Send** submits the image and instruction as one request.
+5. The composer gives way to the same streaming response surface as the automatic path.
 
 ### Disconnected path
 
@@ -113,10 +127,10 @@ Use the monitor work area, not the full monitor bounds, for size and placement c
 - Preserve source aspect ratio exactly.
 - Never upscale the image above its natural DIP size in the initial result.
 - Keep the whole window inside the monitor work area with a 16 DIP safe margin.
-- Keep the answer text measure at or below 620 DIPs even when a banner capture makes the surface wider.
+- Let the response pane use the natural content width of a stacked window; split layouts may cap the text column at 620 DIPs.
 - Reserve the answer plane before streaming begins; incoming tokens must not cause horizontal relayout.
 - Prefer avoiding the selected rectangle. If no side fits, choose the candidate with the least overlap and keep the result fully visible.
-- Do not resize continuously while text streams. Grow at most once, when a completed short answer can be shown without scrolling; otherwise scroll within the stable answer plane.
+- Grow the response plane in coalesced, content-measured steps while text streams, capped by the monitor work area; once capped, scroll within the answer plane.
 
 ### Layout modes
 
@@ -184,23 +198,9 @@ If the image is smaller than 240 × 140 DIPs, render it at natural size without 
 
 Scale down only as much as needed to fit the safe work area. Selecting the image opens an actual-size, pannable view; this is a secondary inspection action, not a separate editor. The transmitted PNG remains full resolution regardless of preview scale.
 
-### Placement candidates
+### Placement
 
-Evaluate result positions in this order, with an 8 DIP attachment gap:
-
-1. Right of the selection.
-2. Left of the selection.
-3. Below the selection.
-4. Above the selection.
-
-Score each candidate by:
-
-1. Fully inside the work area.
-2. No overlap with the selected rectangle.
-3. Distance from the selection edge.
-4. Distance from the pointer release location.
-
-Use the first full-fit candidate. If none fully fit without overlap, clamp the highest-scoring candidate to the work area. Preserve the chosen anchor while the answer streams.
+Center the result in the capture monitor's work area. Recenter it after bounded automatic response-height adjustments so the full card stays visible. Once the user drags the header, preserve that manual position for the rest of the capture.
 
 ## Visual language
 
@@ -257,7 +257,7 @@ Fallback: Segoe UI
 - Answer: 15 DIP, regular weight, approximately 1.45 line height.
 - Secondary status: 12 DIP, regular weight.
 - Action labels when required: 12–13 DIP, semibold.
-- Maximum answer line length: approximately 70 characters or 620 DIPs.
+- Maximum split-layout answer line length: approximately 70 characters or 620 DIPs; stacked layouts use the window's natural content width.
 
 Do not display a persistent “Screenshot” or “Answer” heading when the content already communicates the state.
 
@@ -271,21 +271,21 @@ Replace text glyphs such as `...` and `×` with consistent vector icons. Use a s
 - Every icon has an accessible name and tooltip.
 - Controls live in the answer plane and become visually prominent only on hover, keyboard focus, or when action is required.
 
-The completed default state should expose Copy, More, and Close. Stop replaces Copy while busy only if keeping Copy would create ambiguity. Connection, image copy, retry, timing, and new capture remain in More.
+The completed default state should expose Copy, More, and Close. Stop replaces Copy while busy only if keeping Copy would create ambiguity. Connection, image copy, retry, quota-window usage, and new capture remain in More. First-text and completion timing stay diagnostic-only.
 
 ## State design
 
 ### Preparing
 
-Show the screenshot immediately and reserve the final answer plane. Use a small indeterminate pulse or three-dot motion beside a concise label such as **Looking…**. Do not show internal provider stages or a fake percentage.
+Show the screenshot immediately. Automatic captures reserve only a compact preparing plane; prompted captures show the composer without an empty response region beneath it. Use a small indeterminate pulse or three-dot motion beside a concise label such as **Looking…**. Do not show internal provider stages or a fake percentage.
 
 ### Streaming
 
-Replace the preparing indicator on the first non-whitespace text. Batch visual updates to a frame-friendly cadence if per-token WPF layout becomes expensive, but never delay the first chunk. Keep the viewport pinned to the beginning for short answers; do not force-scroll a user who has moved within a long answer.
+Replace the preparing indicator on the first non-whitespace text. Grow the answer plane in a small number of bounded stages, not on every token, up to its work-area cap; longer content scrolls internally. Batch visual updates to a frame-friendly cadence if per-token WPF layout becomes expensive, but never delay the first chunk. Keep the viewport pinned to the beginning for short answers; do not force-scroll a user who has moved within a long answer.
 
 ### Complete
 
-Remove activity without moving the answer. Show Copy, More, and Close quietly. A copied state may temporarily replace the Copy icon for approximately one second without displaying a persistent footer.
+Remove activity and fit short answers to their rendered content. Keep long answers at the work-area cap with an internal scrollbar. Show Copy, More, and Close quietly. A copied state may temporarily replace the Copy icon for approximately one second without displaying a persistent footer.
 
 ### Error
 
@@ -299,9 +299,9 @@ Use one primary **Connect ChatGPT** button. Explain in one short line that sign-
 
 Motion reinforces continuity but must not sit on the critical path.
 
-- Result entrance: 120–160 ms opacity plus scale from 0.98 to 1.00, anchored at the selection-facing edge.
+- Result entrance: 120–160 ms opacity plus scale from 0.98 to 1.00, anchored at the center of the capture monitor work area.
 - Control hover/press: 80–120 ms color transition.
-- Layout mode does not animate after initial placement.
+- Recenter after coalesced content-measured growth so streaming never produces per-token jitter. Stop automatic recentering after a manual drag.
 - Dismissal: at most 100 ms fade; cancellation begins before the animation.
 - Disable nonessential motion when Windows reduced-motion preferences are active.
 - Do not animate window bounds while answer text streams.
@@ -313,8 +313,8 @@ Motion reinforces continuity but must not sit on the critical path.
 - A pointer click inside the answer permits selection and keyboard interaction.
 - `Escape` dismisses the result when it has focus; during capture it cancels the overlay.
 - Copy and menu actions must be keyboard accessible.
-- The surface stays topmost while visible but does not appear in the taskbar or Alt+Tab list.
-- Dragging is available from noninteractive empty space; no visible title bar is required.
+- The surface stays topmost while visible and appears in the taskbar so it can be minimized without cancelling an in-flight response.
+- Dragging is available from the compact visible header.
 
 ## Accessibility
 
@@ -384,7 +384,7 @@ Use two templates or visual states over the same data:
 - `StackedResultTemplate`
 - `SplitResultTemplate`
 
-Both share the same answer view and action cluster. Switching templates occurs once when a capture is committed, before the window becomes visible. The streaming state changes content, not geometry.
+Both share the same answer view and action cluster. Switching templates occurs once when a capture is committed, before the window becomes visible. Streaming may grow the answer plane vertically in coalesced, bounded steps, but never changes the stacked/split mode or image geometry.
 
 ### Backdrop spike
 
@@ -398,7 +398,7 @@ Validate these native behaviors before committing to a library or WinUI rewrite:
 - Rendering at mixed DPI.
 - No black frame in native screenshots or Remote Desktop fallback.
 
-If native WPF cannot satisfy those concrete checks reliably, preserve `Screenshot.Core` and evaluate replacing only `Screenshot.Desktop` with WinUI 3. A visual preference alone is not sufficient reason to rewrite the working provider and capture pipeline.
+If native WPF cannot satisfy those concrete checks reliably, preserve `ClipAsk.Core` and evaluate replacing only `ClipAsk.Desktop` with WinUI 3. A visual preference alone is not sufficient reason to rewrite the working provider and capture pipeline.
 
 ## Verification matrix
 
@@ -431,18 +431,16 @@ The design pass is complete when:
 1. A thin horizontal capture is immediately legible and uses a wide stacked composition.
 2. A tall capture uses a proportional side preview without squeezing the answer below 280 DIPs.
 3. No capture is distorted, arbitrarily squared, or silently downsampled for inference.
-4. The result appears beside the selection without taking focus.
-5. The preparing-to-streaming transition causes no window jump.
+4. The result appears centered on the capture monitor without taking focus for automatic captures.
+5. The preparing-to-streaming transition remains centered and causes no per-token window jitter.
 6. The default completed surface contains no persistent title or routine status footer.
 7. Copy, More, Close, Stop, Retry, and Connect use consistent accessible icons or labels.
 8. System theme, transparency-off fallback, high contrast, and reduced motion all remain usable.
 9. The full automated suite, layout matrix, and native smoke checks pass.
-10. Real capture testing confirms that the new visual treatment feels attached to the source rather than like a separate application window.
+10. Real capture testing confirms that centering remains predictable across mixed-DPI and negative-coordinate monitors.
 
 ## Deferred decisions
 
-- Whether lightweight Markdown rendering is worth its dependency and layout cost.
 - Whether an optional Fast service-tier setting belongs in a later preferences surface.
 - Whether actual-size image inspection should open inline or in a separate transient viewer.
-- Whether usage evidence eventually justifies additional default actions beyond Answer.
 - Whether measured selection behavior provides enough safe lead time for opt-in speculative inference.

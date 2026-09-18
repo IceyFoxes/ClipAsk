@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>ClipAsk</AssemblyName>
+    <RootNamespace>ClipAsk.Desktop</RootNamespace>
+    <Product>ClipAsk</Product>
+    <Title>ClipAsk</Title>
+    <Description>Clip a region of your screen and ask ChatGPT.</Description>
+    <Version>0.1.0</Version>
+    <EnableDefaultApplicationDefinition>true</EnableDefaultApplicationDefinition>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="..\..\LICENSE;..\..\THIRD-PARTY-NOTICES.md" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\licenses\**\*" Link="licenses\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <ProjectReference Include="..\ClipAsk.Core\ClipAsk.Core.csproj" />
+    <PackageReference Include="Markdig" Version="1.3.2" />
+    <PackageReference Include="WpfMath" Version="2.1.0" />
+  </ItemGroup>
+</Project>
