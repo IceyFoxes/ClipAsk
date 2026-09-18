@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -35,6 +36,7 @@ internal partial class ResultWindow : Window
     private bool resizeQueued;
     private bool windowMoveInProgress;
     private bool resizeAfterWindowMove;
+    private bool restartManagerShutdownRequested;
     private int lastMeasuredAnswerLength;
     private double currentAnswerPaneHeight;
     private ResultLayout? currentLayout;
@@ -50,7 +52,12 @@ internal partial class ResultWindow : Window
         Width = InitialWidth;
         Height = InitialHeight;
         ShowActivated = false;
-        SourceInitialized += (_, _) => NativeMethods.EnableRoundedCorners(this);
+        SourceInitialized += (_, _) =>
+        {
+            NativeMethods.EnableRoundedCorners(this);
+            if (PresentationSource.FromVisual(this) is HwndSource source)
+                source.AddHook(WindowProcedure);
+        };
         UpdateControls();
     }
 
@@ -65,6 +72,7 @@ internal partial class ResultWindow : Window
     public event Action? StopRequested;
     public event Action? DismissRequested;
     public event Action? MovedByUser;
+    public event Action? RestartManagerShutdownRequested;
 
     public BitmapSource? Preview => PreviewImage.Source as BitmapSource;
     public bool IsBusy => isBusy;
@@ -80,6 +88,29 @@ internal partial class ResultWindow : Window
     internal void PrepareImageActionsForSmoke() => ConfigureActionsMenu(PreviewContainer, System.Windows.Controls.Primitives.PlacementMode.MousePoint);
     internal void BeginWindowMoveForSmoke() => windowMoveInProgress = true;
     internal void EndWindowMoveForSmoke() => CompleteWindowMove(false);
+    internal IntPtr ProcessNativeMessageForSmoke(int message, IntPtr wParam, IntPtr lParam, ref bool handled) =>
+        WindowProcedure(IntPtr.Zero, message, wParam, lParam, ref handled);
+
+    private IntPtr WindowProcedure(IntPtr window, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (!NativeMethods.IsRestartManagerMessage(message, lParam))
+            return IntPtr.Zero;
+        if (message == NativeMethods.WmQueryEndSession)
+        {
+            handled = true;
+            return new IntPtr(1);
+        }
+        if (message == NativeMethods.WmEndSession && wParam != IntPtr.Zero)
+        {
+            handled = true;
+            if (!restartManagerShutdownRequested)
+            {
+                restartManagerShutdownRequested = true;
+                RestartManagerShutdownRequested?.Invoke();
+            }
+        }
+        return IntPtr.Zero;
+    }
 
     public void SetPreview(BitmapSource source, ResultLayout layout)
     {

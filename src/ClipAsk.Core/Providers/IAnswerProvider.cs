@@ -14,7 +14,7 @@ public enum AnswerUpdateKind
 
 public sealed record AnswerUpdate(AnswerUpdateKind Kind, string Text);
 
-public sealed record AnswerRequestOptions(string? Instruction = null, string? Model = null)
+public sealed record AnswerRequestOptions(string? Instruction = null, string? Model = null, string? ReasoningEffort = null)
 {
     public static AnswerRequestOptions Default { get; } = new();
 }

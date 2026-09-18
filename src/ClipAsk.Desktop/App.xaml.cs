@@ -21,6 +21,8 @@ namespace ClipAsk.Desktop;
 public partial class App : System.Windows.Application
 {
     private const int HotkeyId = 1901;
+    private const string InstanceMutexName = "ClipAsk.Desktop.CurrentUser";
+    private const string ShutdownEventName = "ClipAsk.Desktop.Shutdown.CurrentUser";
 
     static App()
     {
@@ -28,6 +30,8 @@ public partial class App : System.Windows.Application
     }
 
     private Mutex? instanceMutex;
+    private EventWaitHandle? shutdownEvent;
+    private RegisteredWaitHandle? shutdownWait;
     private bool ownsInstanceMutex;
     private HwndSource? hotkeySource;
     private Forms.NotifyIcon? tray;
@@ -47,6 +51,7 @@ public partial class App : System.Windows.Application
     private string currentInstruction = string.Empty;
     private bool currentInstructionUsesDefault = true;
     private string? selectedModel;
+    private string? selectedReasoningEffort;
     private bool connected;
     private bool launchInBackground;
     private bool startupEnabled;
@@ -65,7 +70,7 @@ public partial class App : System.Windows.Application
         {
             if (TryHandleOfflineMode(e.Args))
                 return;
-            instanceMutex = new Mutex(true, "ClipAsk.Desktop.CurrentUser", out ownsInstanceMutex);
+            instanceMutex = new Mutex(true, InstanceMutexName, out ownsInstanceMutex);
             if (!ownsInstanceMutex)
             {
                 if (!launchInBackground)
@@ -129,12 +134,73 @@ public partial class App : System.Windows.Application
             }));
             return true;
         }
+        if (args[0].Equals("--shutdown-running-instance", StringComparison.OrdinalIgnoreCase) && args.Length == 1)
+        {
+            Shutdown(SignalRunningInstanceShutdown() ? 0 : 1);
+            return true;
+        }
         return false;
+    }
+
+    private static bool SignalRunningInstanceShutdown()
+    {
+        using var mutex = new Mutex(false, InstanceMutexName);
+        if (TryAcquireMutex(mutex, TimeSpan.Zero))
+        {
+            mutex.ReleaseMutex();
+            return true;
+        }
+
+        EventWaitHandle? request = null;
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(3);
+        while (DateTime.UtcNow < deadline && request is null)
+        {
+            try
+            {
+                request = EventWaitHandle.OpenExisting(ShutdownEventName);
+            }
+            catch (WaitHandleCannotBeOpenedException)
+            {
+                Thread.Sleep(100);
+            }
+        }
+        if (request is null)
+            return false;
+
+        using (request)
+            request.Set();
+        if (!TryAcquireMutex(mutex, TimeSpan.FromSeconds(15)))
+            return false;
+        mutex.ReleaseMutex();
+        return true;
+    }
+
+    private static bool TryAcquireMutex(Mutex mutex, TimeSpan timeout)
+    {
+        try
+        {
+            return mutex.WaitOne(timeout);
+        }
+        catch (AbandonedMutexException)
+        {
+            return true;
+        }
     }
 
     private void InitializeApplication()
     {
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        shutdownEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShutdownEventName);
+        shutdownWait = ThreadPool.RegisterWaitForSingleObject(
+            shutdownEvent,
+            (_, timedOut) =>
+            {
+                if (!timedOut)
+                    Dispatcher.BeginInvoke(DispatcherPriority.Send, new Action(ExitForRestartManager));
+            },
+            null,
+            Timeout.Infinite,
+            executeOnlyOnce: false);
         provider = CodexAnswerProvider.CreateDefault();
         provider.AccountChanged += OnAccountChanged;
         provider.RateLimitsChanged += OnRateLimitsChanged;
@@ -150,6 +216,7 @@ public partial class App : System.Windows.Application
         result.StopRequested += () => StopAnswer(true);
         result.DismissRequested += () => StopAnswer(true);
         result.MovedByUser += () => centerResultOnResize = false;
+        result.RestartManagerShutdownRequested += ExitForRestartManager;
         result.SizeChanged += ResultSizeChanged;
         result.SetWelcome("Select anything on screen with Ctrl+Alt+S.");
         result.SetAccount("Checking ChatGPT account…", false);
@@ -447,7 +514,7 @@ public partial class App : System.Windows.Application
         previous?.Cancel();
         try
         {
-            var options = new AnswerRequestOptions(instruction, selectedModel);
+            var options = new AnswerRequestOptions(instruction, selectedModel, selectedReasoningEffort);
             await foreach (var update in provider!.AnswerAsync(currentPng!, options, localCancellation.Token, requestTiming).ConfigureAwait(true))
             {
                 if (!generation.IsCurrent(requestGeneration))
@@ -536,17 +603,20 @@ public partial class App : System.Windows.Application
             }
         }
 
-        var dialog = new AnswerOptionsWindow(answerInstruction, selectedModel, automaticModel, models) { Owner = result };
+        var dialog = new AnswerOptionsWindow(answerInstruction, selectedModel, selectedReasoningEffort, automaticModel, models) { Owner = result };
         if (dialog.ShowDialog() != true)
             return;
         answerInstruction = dialog.Instruction;
         if (currentInstructionUsesDefault)
             currentInstruction = answerInstruction;
         selectedModel = dialog.SelectedModel;
-        var selected = models.FirstOrDefault(model => model.Model == selectedModel);
-        result.SetModel(selected is null
-            ? automaticModel is null ? "Automatic (resolved per capture)" : $"Automatic → {automaticModel.DisplayName} · {automaticModel.ReasoningEffort}"
-            : $"{selected.DisplayName} · {selected.ReasoningEffort}");
+        selectedReasoningEffort = dialog.SelectedReasoningEffort;
+        var selected = models.FirstOrDefault(model => model.Model == selectedModel) ?? automaticModel;
+        var effectiveEffort = selectedReasoningEffort ?? selected?.ReasoningEffort;
+        var modelLabel = selectedModel is null
+            ? automaticModel is null ? "Automatic (resolved per capture)" : $"Automatic → {automaticModel.DisplayName}"
+            : selected?.DisplayName ?? selectedModel;
+        result.SetModel(effectiveEffort is null ? modelLabel : $"{modelLabel} · {effectiveEffort}");
         result.SetStatus("Response options updated");
     }
 
@@ -730,6 +800,20 @@ public partial class App : System.Windows.Application
         Shutdown();
     }
 
+    private void ExitForRestartManager()
+    {
+        if (shuttingDown)
+            return;
+        StopAnswer(false);
+        overlay?.Close();
+        overlay = null;
+        aboutWindow?.Close();
+        aboutWindow = null;
+        provider?.StopOwnedProcessForShutdown();
+        result?.CloseForExit();
+        Shutdown();
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
         if (!cleanupDone)
@@ -740,6 +824,8 @@ public partial class App : System.Windows.Application
             hotkeySource?.Dispose();
             tray?.Dispose();
             trayIcon?.Dispose();
+            shutdownWait?.Unregister(null);
+            shutdownEvent?.Dispose();
             if (!shuttingDown && provider is not null)
             {
                 provider.StopOwnedProcessForShutdown();

@@ -14,7 +14,10 @@ internal static class NativeMethods
 {
     internal const int ModAlt = 0x0001;
     internal const int ModControl = 0x0002;
+    internal const int WmQueryEndSession = 0x0011;
+    internal const int WmEndSession = 0x0016;
     internal const int WmHotkey = 0x0312;
+    internal const long EndSessionCloseApp = 0x00000001;
     internal const uint ModNoRepeat = 0x4000;
     internal const uint SwpNoActivate = 0x0010;
     internal const uint SwpShowWindow = 0x0040;
@@ -159,6 +162,10 @@ internal static class NativeMethods
         var preference = DwmCornerPreferenceRound;
         _ = DwmSetWindowAttribute(handle, DwmWindowCornerPreference, ref preference, sizeof(int));
     }
+
+    internal static bool IsRestartManagerMessage(int message, IntPtr parameter) =>
+        (message is WmQueryEndSession or WmEndSession) &&
+        (parameter.ToInt64() & EndSessionCloseApp) != 0;
 
     private static System.Drawing.Rectangle ToRectangle(Rect rect) => new(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
 }

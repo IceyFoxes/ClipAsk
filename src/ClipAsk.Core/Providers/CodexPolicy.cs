@@ -2,7 +2,14 @@ using System.Text.Json;
 
 namespace ClipAsk.Core.Providers;
 
-public sealed record CodexModelSelection(string Model, string ReasoningEffort, string DisplayName);
+public sealed record CodexModelSelection(
+    string Model,
+    string ReasoningEffort,
+    string DisplayName,
+    IReadOnlyList<string>? SupportedReasoningEfforts = null)
+{
+    public IReadOnlyList<string> ReasoningEfforts => SupportedReasoningEfforts ?? [ReasoningEffort];
+}
 
 public sealed record SubscriptionAccount(bool IsConnected, string? Plan);
 
@@ -140,7 +147,11 @@ public static class CodexPolicy
             if (!hasAvailabilityWarning && SupportsImages(candidate) && SupportsEffort(candidate, PreferredReasoningEffort))
             {
                 var displayName = candidate.GetProperty("displayName").GetString();
-                return new(PreferredModel, PreferredReasoningEffort, string.IsNullOrWhiteSpace(displayName) ? PreferredModel : displayName);
+                return new(
+                    PreferredModel,
+                    PreferredReasoningEffort,
+                    string.IsNullOrWhiteSpace(displayName) ? PreferredModel : displayName,
+                    ReadSupportedEfforts(candidate));
             }
         }
 
@@ -160,7 +171,7 @@ public static class CodexPolicy
         if (string.IsNullOrWhiteSpace(model) || string.IsNullOrWhiteSpace(effort) || !SupportsEffort(selected, effort))
             throw new InvalidOperationException("Codex returned an unsupported default model configuration. No model request was sent.");
 
-        return new(model, effort, name ?? model);
+        return new(model, effort, name ?? model, ReadSupportedEfforts(selected));
     }
 
     public static IReadOnlyList<CodexModelSelection> ListModels(IEnumerable<JsonElement> models)
@@ -175,11 +186,29 @@ public static class CodexPolicy
     }
 
     public static CodexModelSelection SelectModel(IEnumerable<JsonElement> models, string requestedModel)
+        => SelectModel(models, requestedModel, null);
+
+    public static CodexModelSelection SelectModel(IEnumerable<JsonElement> models, string? requestedModel, string? requestedEffort)
     {
-        var matches = ListModels(models).Where(model => model.Model == requestedModel).ToArray();
-        if (matches.Length != 1)
-            throw new InvalidOperationException("The selected model is not available for screenshots. No model request was sent.");
-        return matches[0];
+        var catalog = models.ToArray();
+        CodexModelSelection selected;
+        if (string.IsNullOrWhiteSpace(requestedModel))
+        {
+            selected = SelectModel(catalog);
+        }
+        else
+        {
+            var matches = ListModels(catalog).Where(model => model.Model == requestedModel).ToArray();
+            if (matches.Length != 1)
+                throw new InvalidOperationException("The selected model is not available for screenshots. No model request was sent.");
+            selected = matches[0];
+        }
+
+        if (string.IsNullOrWhiteSpace(requestedEffort))
+            return selected;
+        if (!selected.ReasoningEfforts.Contains(requestedEffort, StringComparer.Ordinal))
+            throw new InvalidOperationException("The selected reasoning effort is not available for this model. No model request was sent.");
+        return selected with { ReasoningEffort = requestedEffort };
     }
 
     private static bool IsEligibleModel(JsonElement model)
@@ -201,8 +230,17 @@ public static class CodexPolicy
             ? PreferredReasoningEffort
             : model.GetProperty("defaultReasoningEffort").GetString()!;
         var displayName = model.GetProperty("displayName").GetString();
-        return new(name, effort, string.IsNullOrWhiteSpace(displayName) ? name : displayName);
+        return new(name, effort, string.IsNullOrWhiteSpace(displayName) ? name : displayName, ReadSupportedEfforts(model));
     }
+
+    private static IReadOnlyList<string> ReadSupportedEfforts(JsonElement model) =>
+        model.GetProperty("supportedReasoningEfforts")
+            .EnumerateArray()
+            .Select(option => option.GetProperty("reasoningEffort").GetString())
+            .Where(effort => !string.IsNullOrWhiteSpace(effort))
+            .Select(effort => effort!)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
 
     private static bool SupportsImages(JsonElement model) =>
         !model.TryGetProperty("inputModalities", out var modalities) ||

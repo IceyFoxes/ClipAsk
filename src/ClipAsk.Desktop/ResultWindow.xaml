@@ -246,7 +246,7 @@
                     </StackPanel>
                 </Grid>
 
-                <Grid x:Name="Footer" Grid.Row="2" Margin="0,10,0,0">
+                <Grid x:Name="Footer" Grid.Row="2" Margin="0,10,0,4">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <TextBlock x:Name="StatusText" FontSize="11" Foreground="#AEB6C2" TextTrimming="CharacterEllipsis"
                                VerticalAlignment="Center" Margin="0,0,10,0" />

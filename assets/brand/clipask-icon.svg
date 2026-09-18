@@ -41,7 +41,10 @@
   <!-- Squarer incoming-message bubble; tail is merged into the lower-left corner. -->
   <g transform="translate(-12 0)">
     <path
-      fill="#4F46E5"
+      fill="#6366F1"
+      stroke="#A5B4FC"
+      stroke-width="12"
+      stroke-linejoin="round"
       d="M 410 330
          H 675
          Q 745 330 745 400

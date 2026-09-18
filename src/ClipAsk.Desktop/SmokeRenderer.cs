@@ -134,20 +134,28 @@ internal static class SmokeRenderer
         window.SetWelcome("Select anything on screen with Ctrl+Alt+S.");
         window.SetStatus("Ready");
         Save(RenderWindow(window), Path.Combine(outputDirectory, "compact-initial.png"));
+        var restartManagerShutdownRequests = 0;
+        window.RestartManagerShutdownRequested += () => restartManagerShutdownRequests++;
+        var messageHandled = false;
+        var queryResult = window.ProcessNativeMessageForSmoke(NativeMethods.WmQueryEndSession, IntPtr.Zero, new IntPtr(NativeMethods.EndSessionCloseApp), ref messageHandled);
+        if (!messageHandled || queryResult != new IntPtr(1) || restartManagerShutdownRequests != 0)
+            throw new InvalidOperationException("Restart Manager shutdown query was not acknowledged safely.");
+        messageHandled = false;
+        _ = window.ProcessNativeMessageForSmoke(NativeMethods.WmEndSession, new IntPtr(1), new IntPtr(NativeMethods.EndSessionCloseApp), ref messageHandled);
+        if (!messageHandled || restartManagerShutdownRequests != 1)
+            throw new InvalidOperationException("Restart Manager shutdown was not forwarded exactly once.");
         window.DismissForSmoke();
 
         var options = new AnswerOptionsWindow(
             "Explain each step and keep the answer concise.",
+            null,
             null,
             new CodexModelSelection("gpt-5.6-terra", "low", "GPT-5.6 Terra"),
             [new CodexModelSelection("gpt-5.6-terra", "low", "GPT-5.6 Terra")]);
         Save(RenderWindow(options), Path.Combine(outputDirectory, "answer-options.png"));
 
         var firstRun = new FirstRunWindow();
-        if (!firstRun.AccountGuidance.Contains("official managed sign-in", StringComparison.Ordinal) ||
-            !firstRun.AccountGuidance.Contains("stay local", StringComparison.Ordinal))
-            throw new InvalidOperationException("First-run account and privacy guidance is incomplete.");
-        Save(RenderWindow(firstRun), Path.Combine(outputDirectory, "first-run-guidance.png"));
+        Save(RenderWindow(firstRun), Path.Combine(outputDirectory, "first-run.png"));
 
         var about = new AboutWindow();
         if (!about.LicenseSummary.Contains("GPL-3.0-only", StringComparison.Ordinal))
@@ -180,7 +188,7 @@ internal static class SmokeRenderer
             latexParenthesesResponse = "latex-parentheses-response.png",
             promptedCapture = "prompted-capture.png",
             answerOptions = "answer-options.png",
-            firstRunGuidance = "first-run-guidance.png",
+            firstRun = "first-run.png",
             aboutLicenses = "about-licenses.png",
             answer = "42.\n17 + 25 = 42.",
             actualResultWindow = true,

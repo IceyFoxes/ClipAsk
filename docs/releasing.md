@@ -1,6 +1,6 @@
-# Preparing the first ClipAsk beta
+# Releasing ClipAsk betas
 
-The repository is still in preparation. This checklist is not evidence that packaging, signing, or clean-machine validation has passed.
+This checklist records what release packaging validates and which manual coverage is still outstanding.
 
 ## Identity and source
 
@@ -19,7 +19,7 @@ The repository is still in preparation. This checklist is not evidence that pack
 - [x] Apply the final application icon to the executable, windows, tray, installer, and repository branding.
 - [x] Add first-run guidance for left-drag auto-send, right-drag instructions, account limits, privacy, and clipboard behavior.
 - [x] Make hotkey conflicts visible when started in the background.
-- [x] Add a per-user Inno Setup installer definition. It deliberately leaves startup opt-in to the app.
+- [x] Add a per-user Inno Setup installer definition with a visible, checked-by-default startup option.
 - [x] Remove the optional startup registry entry on uninstall while retaining user state by default; offer an explicit sign-out and local-data cleanup option.
 - [x] Compile the installer and validate a silent install, packaged smoke/provider checks, and uninstall in an isolated folder on the development machine.
 - [ ] Validate interactive install, upgrade, startup, and uninstall on a clean Windows account.
@@ -29,7 +29,7 @@ The repository is still in preparation. This checklist is not evidence that pack
 - [ ] Test install, managed sign-in, capture/cancel, Markdown/math, minimize/new capture, streaming while dragging, saved directory, startup, upgrade, and uninstall.
 - [ ] Check multiple displays and DPI scales, offline failures, quota exhaustion, and unsupported account/model states.
 - [ ] Record a short demo using synthetic or explicitly shareable content, showing the real capture-to-answer delay.
-- [ ] Review repository contents and privacy before making it public, then publish a beta release with tested requirements, known issues, binaries, checksums, and matching source.
+- [x] Review repository contents and privacy before making it public, then publish a beta release with tested requirements, known issues, binaries, checksums, and matching source.
 
 Never upload output from `artifacts/local-releases`; it was intentionally built from tracked changes. A clean release run clears stale same-version ZIP, installer, source, and checksum files before producing the requested artifact set. The repository or the exact tagged source must be publicly accessible before distributing GPL binaries.
 

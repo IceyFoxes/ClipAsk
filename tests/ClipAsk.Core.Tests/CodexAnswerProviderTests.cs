@@ -74,13 +74,14 @@ public sealed class CodexAnswerProviderTests
     {
         await using var host = new FakeHost();
         await using var provider = CreateProvider(host);
-        var answer = CollectAsync(provider.AnswerAsync(Png(), new AnswerRequestOptions("Show the calculation.", "request-model"), TestContext.Current.CancellationToken));
+        var answer = CollectAsync(provider.AnswerAsync(Png(), new AnswerRequestOptions("Show the calculation.", "request-model", "medium"), TestContext.Current.CancellationToken));
         await CompleteInitializeAsync(host);
         await RespondConnectedAccountAndCatalogAsync(host);
         var thread = await host.NextAsync();
         host.Respond(thread, Json("""{"thread":{"id":"t"}}"""));
         var turn = await host.NextAsync();
         Assert.Equal("request-model", turn.GetProperty("params").GetProperty("model").GetString());
+        Assert.Equal("medium", turn.GetProperty("params").GetProperty("effort").GetString());
         Assert.Contains("Show the calculation.", turn.GetProperty("params").GetProperty("input")[0].GetProperty("text").GetString());
         host.Notify("item/started", Json("""{"threadId":"t","turnId":"u","item":{"type":"agentMessage","id":"a","phase":"final_answer","text":""}}"""));
         host.Notify("item/agentMessage/delta", Json("""{"threadId":"t","turnId":"u","itemId":"a","delta":"42."}"""));
@@ -233,7 +234,7 @@ public sealed class CodexAnswerProviderTests
         host.Respond(account, Json("""{"account":{"type":"chatgpt","planType":"free"},"requiresOpenaiAuth":true}"""));
         var model = await host.NextAsync();
         Assert.Equal("model/list", model.GetProperty("method").GetString());
-        host.Respond(model, Json("""{"data":[{"id":"catalog","model":"request-model","displayName":"Test vision","hidden":false,"isDefault":true,"defaultReasoningEffort":"low","supportedReasoningEfforts":[{"reasoningEffort":"low"}],"inputModalities":["text","image"]}],"nextCursor":null}"""));
+        host.Respond(model, Json("""{"data":[{"id":"catalog","model":"request-model","displayName":"Test vision","hidden":false,"isDefault":true,"defaultReasoningEffort":"low","supportedReasoningEfforts":[{"reasoningEffort":"low"},{"reasoningEffort":"medium"}],"inputModalities":["text","image"]}],"nextCursor":null}"""));
     }
 
     private static byte[] Png() => [137, 80, 78, 71, 13, 10, 26, 10];

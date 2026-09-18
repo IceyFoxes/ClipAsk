@@ -92,6 +92,23 @@ public sealed class FastModelSelectionTests
         Assert.Throws<InvalidOperationException>(() => CodexPolicy.SelectModel(catalog, "text-only"));
     }
 
+    [Fact]
+    public void ModelAndReasoningEffortCanBeSelectedIndependently()
+    {
+        var catalog = new[]
+        {
+            Model("gpt-5.6-sol", isDefault: true),
+            Model("gpt-5.6-luna")
+        };
+
+        var selected = CodexPolicy.SelectModel(catalog, "gpt-5.6-luna", "low");
+
+        Assert.Equal("gpt-5.6-luna", selected.Model);
+        Assert.Equal("low", selected.ReasoningEffort);
+        Assert.Contains("medium", selected.ReasoningEfforts);
+        Assert.Throws<InvalidOperationException>(() => CodexPolicy.SelectModel(catalog, "gpt-5.6-luna", "high"));
+    }
+
     private static JsonElement Model(string model, bool isDefault = false, bool hidden = false, bool image = true, bool low = true, bool warning = false) =>
         JsonSerializer.SerializeToElement(new
         {

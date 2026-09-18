@@ -11,8 +11,6 @@ internal partial class FirstRunWindow : Window
         SourceInitialized += (_, _) => NativeMethods.EnableRoundedCorners(this);
     }
 
-    internal string AccountGuidance => AccountGuidanceText.Text;
-
     private void ContinueClick(object sender, RoutedEventArgs e) => Close();
 
     private void HeaderMouseDown(object sender, MouseButtonEventArgs e)

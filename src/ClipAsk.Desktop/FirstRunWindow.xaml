@@ -1,7 +1,7 @@
 <Window x:Class="ClipAsk.Desktop.FirstRunWindow" x:ClassModifier="internal"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Welcome to ClipAsk" Icon="pack://application:,,,/Assets/clipask.ico" Width="500" Height="500" WindowStyle="None" ResizeMode="NoResize"
+        Title="Welcome to ClipAsk" Icon="pack://application:,,,/Assets/clipask.ico" Width="500" Height="390" WindowStyle="None" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Topmost="True"
         Background="#181B20" Foreground="#F2F4F7"
         FontFamily="Aptos Display, Segoe UI Variable Display, Segoe UI" KeyDown="WindowKeyDown">
@@ -26,7 +26,6 @@
     <Border Background="#181B20" BorderBrush="#596270" BorderThickness="1" CornerRadius="10">
         <Grid Margin="24">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -73,12 +72,7 @@
                 </StackPanel>
             </Grid>
 
-            <Border Grid.Row="4" Margin="0,22,0,0" Padding="14,12" Background="#22262D" BorderBrush="#3B434E" BorderThickness="1" CornerRadius="8">
-                <TextBlock x:Name="AccountGuidanceText" Foreground="#AEB6C2" FontSize="12" LineHeight="18" TextWrapping="Wrap"
-                           Text="Connect ChatGPT uses the official managed sign-in for your own account—no password or API key is stored. Windows Credential Manager protects the sign-in token so you can remain connected. Answers use that account's model access and usage allowance. Captures stay local until you complete a selection and request an answer." />
-            </Border>
-
-            <Grid Grid.Row="6" Margin="0,22,0,0">
+            <Grid Grid.Row="5" Margin="0,22,0,0">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <TextBlock Text="Tip: the ••• menu has response options and startup settings."
                            FontSize="11" Foreground="#8993A1" VerticalAlignment="Center" />

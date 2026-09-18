@@ -43,8 +43,11 @@ Source: "{#MySourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdir
 [Icons]
 Name: "{autoprograms}\ClipAsk"; Filename: "{app}\ClipAsk.exe"
 
+[Tasks]
+Name: "startup"; Description: "Start ClipAsk on startup"; GroupDescription: "Additional options:"; Flags: checkedonce
+
 [Registry]
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "ClipAsk"; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "ClipAsk"; ValueData: """{app}\ClipAsk.exe"" --startup"; Tasks: startup; Flags: uninsdeletevalue
 
 [Run]
 Filename: "{app}\ClipAsk.exe"; Description: "Launch ClipAsk"; Flags: nowait postinstall skipifsilent
@@ -137,15 +140,33 @@ end;
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   ResultCode: Integer;
+  ShutdownStarted: Boolean;
+  ShutdownSucceeded: Boolean;
   SignOutStarted: Boolean;
   SignOutSucceeded: Boolean;
   StateDirectory: String;
 begin
-  if not RemoveUserDataOnUninstall then
-    Exit;
-
   if CurUninstallStep = usUninstall then
   begin
+    ShutdownSucceeded := True;
+    if FileExists(ExpandConstant('{app}\ClipAsk.exe')) then
+    begin
+      ResultCode := -1;
+      ShutdownStarted := Exec(
+        ExpandConstant('{app}\ClipAsk.exe'),
+        '--shutdown-running-instance',
+        ExpandConstant('{app}'),
+        SW_HIDE,
+        ewWaitUntilTerminated,
+        ResultCode);
+      ShutdownSucceeded := ShutdownStarted and (ResultCode = 0);
+    end;
+    if not ShutdownSucceeded then
+      RaiseException('ClipAsk could not close cleanly. Exit ClipAsk from the system tray, then run the uninstaller again.');
+
+    if not RemoveUserDataOnUninstall then
+      Exit;
+
     ResultCode := -1;
     SignOutSucceeded := False;
     if FileExists(ExpandConstant('{app}\ClipAsk.exe')) then
@@ -171,7 +192,7 @@ begin
     end;
   end;
 
-  if CurUninstallStep = usPostUninstall then
+  if RemoveUserDataOnUninstall and (CurUninstallStep = usPostUninstall) then
   begin
     StateDirectory := ExpandConstant('{localappdata}\ClipAsk');
     if DelTree(StateDirectory, True, True, True) then

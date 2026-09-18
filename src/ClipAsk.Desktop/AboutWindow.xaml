@@ -15,6 +15,32 @@
             <Setter Property="MinWidth" Value="86" />
             <Setter Property="Margin" Value="8,0,0,0" />
         </Style>
+        <Style x:Key="CloseIconButton" TargetType="Button">
+            <Setter Property="Foreground" Value="#C5CBD4" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ButtonSurface" Property="Background" Value="#2B3038" /><Setter Property="Foreground" Value="#FFFFFF" /></Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="ButtonSurface" Property="Background" Value="#383E48" /></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="ButtonSurface" Property="BorderBrush" Value="#78A9FF" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <Border Background="#181B20" BorderBrush="#596270" BorderThickness="1" CornerRadius="10">
         <Grid Margin="22">
@@ -32,7 +58,13 @@
                     <TextBlock Text="ClipAsk" FontSize="22" FontWeight="SemiBold" />
                     <TextBlock x:Name="VersionText" Margin="0,4,0,0" FontSize="12" Foreground="#8993A1" />
                 </StackPanel>
-                <Button Grid.Column="1" Content="Close" Click="CloseClick" Padding="10,5" MinWidth="60" />
+                <Button Grid.Column="1" Style="{StaticResource CloseIconButton}" Click="CloseClick"
+                        ToolTip="Close" AutomationProperties.Name="Close">
+                    <Canvas Width="16" Height="16">
+                        <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" Data="M3,3 L13,13 M13,3 L3,13" />
+                    </Canvas>
+                </Button>
             </Grid>
 
             <TextBlock Grid.Row="1" Margin="0,22,0,0" FontSize="14" LineHeight="21" TextWrapping="Wrap"

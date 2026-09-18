@@ -18,7 +18,13 @@ Responses stream into a floating window with Markdown, code blocks, tables, and 
 
 ## Status
 
-ClipAsk is a working prototype preparing for its first public beta. Release tooling now produces a portable self-contained Windows ZIP and an Inno Setup installer; published artifacts will remain unsigned until a signing certificate is configured. Automatic updates are not yet available.
+ClipAsk is available as a public beta for Windows 10/11 x64. The installer and portable ZIP are self-contained, but remain unsigned until a trusted signing path is configured. Automatic updates are not yet available.
+
+## Download
+
+Download **[ClipAsk 0.1.0 Beta 2](https://github.com/IceyFoxes/ClipAsk/releases/tag/v0.1.0-beta.2)**. For most people, use `ClipAsk-0.1.0-win-x64-Setup.exe`; the ZIP is the portable alternative.
+
+Because this beta is unsigned, Windows SmartScreen may show an unknown-publisher warning. Verify the adjacent SHA-256 checksum before running it. The installer is per-user and does not require administrator access.
 
 ## Features
 
@@ -50,7 +56,7 @@ $env:CLIPASK_CODEX_PATH = 'C:\path\to\codex.exe'
 dotnet run -c Release --project src/ClipAsk.Desktop/ClipAsk.Desktop.csproj
 ```
 
-Click **Connect ChatGPT** on first launch and complete the browser sign-in. Keep the app running in the tray to use the shortcut. Start on startup is opt-in and takes effect when you sign in to Windows.
+Click **Connect ChatGPT** on first launch and complete the browser sign-in. Keep the app running in the tray to use the shortcut. The installer offers a checked-by-default option to start ClipAsk when you sign in to Windows; you can change it later from the ClipAsk menu.
 
 Without `CLIPASK_CODEX_PATH`, the app expects `codex.exe` beside `ClipAsk.exe`. Optional `CLIPASK_STATE_DIR` overrides runtime storage and must point to a local Windows drive, not a WSL/UNC share.
 
@@ -75,7 +81,7 @@ bash scripts/package.sh
 
 On native Windows, run `scripts/package.ps1`. Pass `-BuildInstaller` there, or set `BUILD_INSTALLER=1` for the bash launcher, when Inno Setup 6 is installed. Packaging verifies the exact Codex runtime allowlist and hashes, removes symbols, embeds corresponding ClipAsk source, and runs the published executable's synthetic UI and isolated provider checks before creating the portable ZIP. Clean artifacts and SHA-256 files are written under `artifacts/releases`; validation evidence is written under `artifacts/validation`; all build output is ignored by Git. Release packaging rejects tracked changes by default so its embedded source commit identifies the corresponding source. `ALLOW_DIRTY=1` (bash) or `-AllowDirty` (PowerShell) writes only to `artifacts/local-releases` and is for local package testing.
 
-The installer is per-user, does not require elevation, and does not silently enable startup. Startup remains an explicit in-app choice and its registry entry is removed on uninstall. ChatGPT passwords are never stored by ClipAsk; the managed sign-in token is kept in Windows Credential Manager. By default, uninstall retains account/runtime state and preferences under `%LOCALAPPDATA%\ClipAsk` for a future reinstall. The interactive uninstaller offers an unchecked option to sign out and remove that local data. See [the release checklist](docs/releasing.md) before distributing an artifact.
+The installer is per-user and does not require elevation. Its visible startup option is checked by default, can be unchecked during setup, and remains available from the app; its registry entry is removed on uninstall. ChatGPT passwords are never stored by ClipAsk; the managed sign-in token is kept in Windows Credential Manager. By default, uninstall retains account/runtime state and preferences under `%LOCALAPPDATA%\ClipAsk` for a future reinstall. The interactive uninstaller offers an unchecked option to sign out and remove that local data. See [the release checklist](docs/releasing.md) before distributing an artifact.
 
 ## Project structure
 

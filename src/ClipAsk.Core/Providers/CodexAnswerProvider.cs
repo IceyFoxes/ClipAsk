@@ -233,7 +233,7 @@ public sealed class CodexAnswerProvider : IAnswerProvider
             var connected = account?.IsConnected == true ? account : await GetAccountAsync(linked.Token).ConfigureAwait(false);
             if (!connected.IsConnected)
                 throw new InvalidOperationException("Connect a ChatGPT account before analyzing a selection.");
-            var selectedModel = await GetModelAsync(rpc, options.Model, linked.Token).ConfigureAwait(false);
+            var selectedModel = await GetModelAsync(rpc, options.Model, options.ReasoningEffort, linked.Token).ConfigureAwait(false);
             Publish(new(AnswerUpdateKind.Model, $"{selectedModel.DisplayName} · {selectedModel.ReasoningEffort}"));
             var threadResponse = await rpc.RequestAsync("thread/start", CodexPolicy.ThreadParameters(GetWorkspace(), selectedModel), linked.Token).ConfigureAwait(false);
             threadId = ReadId(threadResponse, "threadId", "thread") ?? throw new InvalidOperationException("Codex did not return a thread identifier.");
@@ -302,13 +302,13 @@ public sealed class CodexAnswerProvider : IAnswerProvider
         }
     }
 
-    private async Task<CodexModelSelection> GetModelAsync(JsonRpcConnection rpc, string? requestedModel, CancellationToken cancellationToken)
+    private async Task<CodexModelSelection> GetModelAsync(JsonRpcConnection rpc, string? requestedModel, string? requestedEffort, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(requestedModel) && model is not null)
+        if (string.IsNullOrWhiteSpace(requestedModel) && string.IsNullOrWhiteSpace(requestedEffort) && model is not null)
             return model;
         var entries = await GetModelCatalogAsync(rpc, cancellationToken).ConfigureAwait(false);
-        if (!string.IsNullOrWhiteSpace(requestedModel))
-            return CodexPolicy.SelectModel(entries, requestedModel);
+        if (!string.IsNullOrWhiteSpace(requestedModel) || !string.IsNullOrWhiteSpace(requestedEffort))
+            return CodexPolicy.SelectModel(entries, requestedModel, requestedEffort);
         return model = CodexPolicy.SelectModel(entries);
     }
 
@@ -550,7 +550,10 @@ public sealed class CodexAnswerProvider : IAnswerProvider
         try
         {
             if (!owned.HasExited)
+            {
                 owned.Kill(true);
+                _ = owned.WaitForExit(2000);
+            }
         }
         catch
         {
