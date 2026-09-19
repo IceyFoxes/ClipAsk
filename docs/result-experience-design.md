@@ -2,22 +2,22 @@
 
 ## Status
 
-Implementation in progress. The result surface now uses tested adaptive stacked/split geometry, proportional previews, capture-monitor centering, a compact draggable header, bounded growth while streaming or after a manual move, taskbar minimization, explicit PNG saving with a remembered destination folder, and Markdown/LaTeX response rendering. Native system-theme materials, backdrop integration, motion, and the full accessibility verification matrix remain to be implemented.
+Implementation in progress. The result surface now uses tested adaptive stacked/split geometry, proportional previews, capture-monitor centering, a compact draggable header, manual resizing with aspect-ratio-preserving preview scaling, bounded growth while streaming or after a manual move, taskbar minimization, explicit PNG saving with a remembered destination folder, and Markdown/LaTeX response rendering. Native system-theme materials, backdrop integration, motion, and the full accessibility verification matrix remain to be implemented.
 
 ## Product thesis
 
-**Select anything. Ask only when you need to.**
+**Select anything. Ask it your way.**
 
-ClipAsk is a screenshot-to-response utility connected to the user's ChatGPT account, not a small chat application. Its default path removes the context switch, paste, and prompt-writing steps from a familiar screenshot gesture:
+ClipAsk is a screenshot-to-response utility connected to the user's ChatGPT account, not a small chat application. Its default path removes the context switch and paste step while letting the user state their intent:
 
 ```text
-Ctrl+Alt+S → left-drag → release → useful response appears centered on the capture monitor
+Ctrl+Alt+S → left-drag → add one instruction → response appears centered on the capture monitor
 ```
 
-When the picture alone is not enough, the same gesture has an intentional alternate path:
+When the picture already contains enough context, the secondary mouse gesture keeps the instant path available:
 
 ```text
-Ctrl+Alt+S → right-drag → add one instruction → response appears centered on the capture monitor
+Ctrl+Alt+S → right-drag → release → useful response appears centered on the capture monitor
 ```
 
 The experience must feel lighter than opening an AI chat even while remote inference is still running. It should communicate immediacy through spatial continuity and honest feedback, not fake progress or decorative motion.
@@ -76,29 +76,28 @@ Observed time to first text is approximately four to six seconds and is primaril
 
 ### Trust by default
 
-The selected image remains local until the user commits the applicable action: releasing a left-drag for automatic analysis, or sending the instruction after a right-drag. Connection and account details stay available but out of the main path. Errors are stated plainly. The UI must not imply that cancellation can undo an image already sent.
+The selected image remains local until the user commits the applicable action: sending the instruction after a left-drag, or releasing a right-drag for automatic analysis. Connection and account details stay available but out of the main path. Errors are stated plainly. The UI must not imply that cancellation can undo an image already sent.
 
 ## Core interaction
 
-### Connected path
+### Prompted path
 
 1. The user presses `Ctrl+Alt+S`.
 2. The current display freezes under the selection overlay.
-3. The user left-drags a region for automatic analysis.
+3. The user left-drags a region.
 4. On release, the crop is committed and copied to the clipboard.
-5. The result surface appears beside the crop immediately.
-6. PNG encoding and the analysis request proceed without another click.
-7. A restrained activity state occupies the reserved answer plane.
-8. The first answer text replaces that state as soon as it arrives.
-9. The user may copy, dismiss, retry, or start another capture.
+5. ClipAsk displays the crop with a focused one-line instruction field.
+6. The crop remains local while the user types; no model request starts yet.
+7. Pressing `Enter` or **Send** submits the image and instruction as one request.
+8. The composer gives way to the streaming response surface.
 
-### Prompted path
+### Automatic path
 
 1. The user right-drags a region in the same overlay.
-2. On release, ClipAsk displays the crop with a focused one-line instruction field.
-3. The crop remains local while the user types; no model request starts yet.
-4. Pressing `Enter` or **Send** submits the image and instruction as one request.
-5. The composer gives way to the same streaming response surface as the automatic path.
+2. On release, the crop is committed and copied to the clipboard.
+3. The result surface appears immediately without taking focus from the previous application.
+4. PNG encoding and the analysis request proceed without another click.
+5. A restrained activity state gives way to the response as soon as text arrives.
 
 ### Disconnected path
 
@@ -192,7 +191,7 @@ For captures between the two thresholds, calculate both stacked and split candid
 
 #### Tiny capture
 
-If the image is smaller than 240 × 140 DIPs, render it at natural size without upscaling. The answer plane may still establish the minimum surface width. Align the image to the leading edge rather than stretching or centering it inside an oversized decorative box.
+If the image is smaller than 240 × 140 DIPs, initially render it at natural size without upscaling. The answer plane may still establish the minimum surface width. A deliberate manual window resize may scale the preview above natural size while preserving its aspect ratio.
 
 #### Oversized capture
 
@@ -200,7 +199,7 @@ Scale down only as much as needed to fit the safe work area. Selecting the image
 
 ### Placement
 
-Center the result in the capture monitor's work area. Recenter it after bounded automatic response-height adjustments so the full card stays visible. Once the user drags the header, preserve that manual position for the rest of the capture.
+Center the result in the capture monitor's work area. Recenter it after bounded automatic response-height adjustments so the full card stays visible. Once the user drags the header, preserve that manual position for the rest of the capture. Once the user resizes the window, preserve that size and let long responses scroll instead of resuming automatic growth.
 
 ## Visual language
 
@@ -301,16 +300,17 @@ Motion reinforces continuity but must not sit on the critical path.
 
 - Result entrance: 120–160 ms opacity plus scale from 0.98 to 1.00, anchored at the center of the capture monitor work area.
 - Control hover/press: 80–120 ms color transition.
-- Recenter after coalesced content-measured growth so streaming never produces per-token jitter. Stop automatic recentering after a manual drag.
+- Recenter after coalesced content-measured growth so streaming never produces per-token jitter. Stop automatic recentering after a manual drag and stop automatic growth after a manual resize.
 - Dismissal: at most 100 ms fade; cancellation begins before the animation.
 - Disable nonessential motion when Windows reduced-motion preferences are active.
 - Do not animate window bounds while answer text streams.
 
 ## Focus and window behavior
 
-- Show without activation after capture.
+- Automatic right-drag captures show without activation; prompted left-drag captures activate the instruction field.
 - Restore the previously foreground application after the overlay closes.
 - A pointer click inside the answer permits selection and keyboard interaction.
+- Window edges resize the surface; the preview scales proportionally and the answer reflows into the remaining space.
 - `Escape` dismisses the result when it has focus; during capture it cancels the overlay.
 - Copy and menu actions must be keyboard accessible.
 - The surface stays topmost while visible and appears in the taskbar so it can be minimized without cancelling an in-flight response.
@@ -430,9 +430,9 @@ The design pass is complete when:
 
 1. A thin horizontal capture is immediately legible and uses a wide stacked composition.
 2. A tall capture uses a proportional side preview without squeezing the answer below 280 DIPs.
-3. No capture is distorted, arbitrarily squared, or silently downsampled for inference.
+3. No capture is distorted, arbitrarily squared, or silently downsampled for inference, including after manual window resizing.
 4. The result appears centered on the capture monitor without taking focus for automatic captures.
-5. The preparing-to-streaming transition remains centered and causes no per-token window jitter.
+5. The preparing-to-streaming transition remains centered and causes no per-token window jitter; a manual size is never overridden by streaming growth.
 6. The default completed surface contains no persistent title or routine status footer.
 7. Copy, More, Close, Stop, Retry, and Connect use consistent accessible icons or labels.
 8. System theme, transparency-off fallback, high contrast, and reduced motion all remain usable.

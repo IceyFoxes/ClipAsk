@@ -17,7 +17,7 @@ This checklist records what release packaging validates and which manual coverag
 - [x] Include GPL license text, build metadata, source URL, and a corresponding-source archive pinned to the packaged commit.
 - [x] Add About/license access from the window and tray menus.
 - [x] Apply the final application icon to the executable, windows, tray, installer, and repository branding.
-- [x] Add first-run guidance for left-drag auto-send, right-drag instructions, account limits, privacy, and clipboard behavior.
+- [x] Add first-run guidance for left-drag instructions, right-drag auto-send, account limits, privacy, and clipboard behavior.
 - [x] Make hotkey conflicts visible when started in the background.
 - [x] Add a per-user Inno Setup installer definition with a visible, checked-by-default startup option.
 - [x] Remove the optional startup registry entry on uninstall while retaining user state by default; offer an explicit sign-out and local-data cleanup option.

@@ -6,7 +6,7 @@ These notes describe the current prototype, not a promise about the storage poli
 
 Starting capture creates a local image of the selected monitor for the selection overlay. Cancelling does not send an image. Releasing a valid selection creates the cropped image and copies it to the Windows clipboard.
 
-If connected, left-drag capture immediately sends the crop and the configured optional instruction to the provider. Right-drag capture waits for an instruction and Send. Analyze again explicitly resends the current capture. Other areas of the capture monitor are not included in the answer request.
+If connected, left-drag capture waits for an instruction and **Send**. Right-drag capture immediately sends the crop and the configured optional instruction to the provider. Analyze again explicitly resends the current capture. Other areas of the capture monitor are not included in the answer request.
 
 ClipAsk sends requests through the official Codex runtime using your ChatGPT account. It does not route screenshots through a ClipAsk-operated server. OpenAI's account terms, limits, and data policies apply to provider processing. Review sensitive content before capturing it.
 

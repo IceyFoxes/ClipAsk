@@ -57,7 +57,7 @@
                 <StackPanel Grid.Column="1">
                     <TextBlock Text="Drag with the button that matches your intent" FontSize="14" FontWeight="SemiBold" />
                     <TextBlock Margin="0,4,0,0" Foreground="#AEB6C2" TextWrapping="Wrap">
-                        <Run FontWeight="SemiBold" Foreground="#F2F4F7">Left-drag</Run><Run Text=" sends the selection automatically.  " /><Run FontWeight="SemiBold" Foreground="#F2F4F7">Right-drag</Run><Run Text=" opens a prompt so you can add an instruction before sending." />
+                        <Run FontWeight="SemiBold" Foreground="#F2F4F7">Left-drag</Run><Run Text=" opens a prompt so you can add an instruction.  " /><Run FontWeight="SemiBold" Foreground="#F2F4F7">Right-drag</Run><Run Text=" asks about the selection immediately." />
                     </TextBlock>
                 </StackPanel>
             </Grid>

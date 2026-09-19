@@ -34,9 +34,12 @@ internal partial class ResultWindow : Window
     private bool startupEnabled;
     private bool answerComplete;
     private bool resizeQueued;
+    private bool programmaticResizePending;
+    private bool userSizedWindow;
     private bool windowMoveInProgress;
     private bool resizeAfterWindowMove;
     private bool restartManagerShutdownRequested;
+    private int programmaticResizeGeneration;
     private int lastMeasuredAnswerLength;
     private double currentAnswerPaneHeight;
     private ResultLayout? currentLayout;
@@ -82,12 +85,23 @@ internal partial class ResultWindow : Window
     public bool IsActionsMenuOpen => ActionsMenu.IsOpen;
     public bool IsActionsMenuTargetingPreview => ReferenceEquals(ActionsMenu.PlacementTarget, PreviewContainer);
     public bool IsSaveImageEnabled => SaveImageItem.IsEnabled;
+    public bool IsUserResizeEnabled => ResizeMode == ResizeMode.CanResize;
+    public double PreviewDisplayWidth => PreviewContainer.Width;
+    public double PreviewDisplayHeight => PreviewContainer.Height;
     public Visibility InstructionComposerVisibility => InstructionComposer.Visibility;
     public bool IsInstructionSendEnabled => InstructionSendButton.IsEnabled;
     internal void SetInstructionForSmoke(string value) => InstructionTextBox.Text = value;
     internal void PrepareImageActionsForSmoke() => ConfigureActionsMenu(PreviewContainer, System.Windows.Controls.Primitives.PlacementMode.MousePoint);
     internal void BeginWindowMoveForSmoke() => windowMoveInProgress = true;
     internal void EndWindowMoveForSmoke() => CompleteWindowMove(false);
+    internal void ResizeForSmoke(double width, double height)
+    {
+        userSizedWindow = true;
+        programmaticResizePending = false;
+        Width = width;
+        Height = height;
+        ApplyUserSizedLayout(width, height);
+    }
     internal IntPtr ProcessNativeMessageForSmoke(int message, IntPtr wParam, IntPtr lParam, ref bool handled) =>
         WindowProcedure(IntPtr.Zero, message, wParam, lParam, ref handled);
 
@@ -115,6 +129,7 @@ internal partial class ResultWindow : Window
     public void SetPreview(BitmapSource source, ResultLayout layout)
     {
         currentLayout = layout;
+        userSizedWindow = false;
         ResetInstructionEntry();
         PreviewImage.Source = source;
         SetAnswerCore(string.Empty);
@@ -128,6 +143,7 @@ internal partial class ResultWindow : Window
     public void ClearPreview()
     {
         currentLayout = null;
+        userSizedWindow = false;
         ResetInstructionEntry();
         PreviewImage.Source = null;
         SetAnswerCore(string.Empty);
@@ -358,8 +374,7 @@ internal partial class ResultWindow : Window
 
     private void ApplyLayout(ResultLayout layout)
     {
-        Width = layout.WindowWidth;
-        Height = layout.WindowHeight;
+        SetProgrammaticSize(layout.WindowWidth, layout.WindowHeight);
         PreviewContainer.Width = layout.PreviewWidth;
         PreviewContainer.Height = layout.PreviewHeight;
         PreviewImage.Width = layout.PreviewWidth;
@@ -401,8 +416,7 @@ internal partial class ResultWindow : Window
 
     private void ApplyInitialLayout()
     {
-        Width = InitialWidth;
-        Height = InitialHeight;
+        SetProgrammaticSize(InitialWidth, InitialHeight);
         FirstRow.Height = new GridLength(1, GridUnitType.Star);
         LayoutGapRow.Height = new GridLength(0);
         SecondRow.Height = new GridLength(0);
@@ -443,17 +457,117 @@ internal partial class ResultWindow : Window
         var maximumAnswerHeight = Math.Max(minimumAnswerHeight, layout.MaximumWindowHeight - fixedHeight);
         var answerHeight = Math.Clamp(requestedHeight, minimumAnswerHeight, maximumAnswerHeight);
         currentAnswerPaneHeight = answerHeight;
+        if (userSizedWindow)
+        {
+            ApplyUserSizedLayout(ActualWidth > 0 ? ActualWidth : Width, ActualHeight > 0 ? ActualHeight : Height);
+            return;
+        }
         if (layout.Mode == ResultLayoutMode.Stacked)
         {
             SecondRow.Height = new GridLength(answerHeight);
-            Height = Math.Min(layout.MaximumWindowHeight, fixedHeight + answerHeight);
+            SetProgrammaticHeight(Math.Min(layout.MaximumWindowHeight, fixedHeight + answerHeight));
         }
         else
         {
             FirstRow.Height = new GridLength(1, GridUnitType.Star);
             var contentHeight = Math.Max(layout.PreviewHeight, answerHeight);
-            Height = Math.Min(layout.MaximumWindowHeight, TitleHeight + ContentInsets + contentHeight);
+            SetProgrammaticHeight(Math.Min(layout.MaximumWindowHeight, TitleHeight + ContentInsets + contentHeight));
         }
+    }
+
+    private void WindowSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (currentLayout is null || programmaticResizePending || e.NewSize.Width < 1 || e.NewSize.Height < 1)
+            return;
+        userSizedWindow = true;
+        ApplyUserSizedLayout(e.NewSize.Width, e.NewSize.Height);
+    }
+
+    private void ApplyUserSizedLayout(double windowWidth, double windowHeight)
+    {
+        if (currentLayout is not { } layout || layout.PreviewWidth <= 0 || layout.PreviewHeight <= 0)
+            return;
+
+        var contentWidth = Math.Max(1, windowWidth - ContentInsets);
+        var contentHeight = Math.Max(1, windowHeight - TitleHeight - ContentInsets);
+        var aspectRatio = layout.PreviewWidth / layout.PreviewHeight;
+
+        AnswerPane.Width = double.NaN;
+        AnswerPane.HorizontalAlignment = HorizontalAlignment.Stretch;
+        AnswerTopRow.Height = new GridLength(instructionMode ? 48 : 0);
+        PreviewContainer.HorizontalAlignment = HorizontalAlignment.Center;
+        PreviewContainer.VerticalAlignment = VerticalAlignment.Top;
+
+        double previewWidth;
+        double previewHeight;
+        if (layout.Mode == ResultLayoutMode.Stacked)
+        {
+            var minimumAnswerHeight = instructionMode ? 96 : MinimumResponseHeight;
+            var previewHeightLimit = Math.Max(1, contentHeight - LayoutGap - minimumAnswerHeight);
+            previewWidth = Math.Min(contentWidth, previewHeightLimit * aspectRatio);
+            previewHeight = previewWidth / aspectRatio;
+
+            FirstRow.Height = new GridLength(previewHeight);
+            LayoutGapRow.Height = new GridLength(LayoutGap);
+            SecondRow.Height = new GridLength(1, GridUnitType.Star);
+            FirstColumn.Width = new GridLength(1, GridUnitType.Star);
+            LayoutGapColumn.Width = new GridLength(0);
+            SecondColumn.Width = new GridLength(0);
+            Grid.SetRow(PreviewContainer, 0);
+            Grid.SetColumn(PreviewContainer, 0);
+            Grid.SetRow(AnswerPane, 2);
+            Grid.SetColumn(AnswerPane, 0);
+        }
+        else
+        {
+            var usableWidth = Math.Max(1, contentWidth - LayoutGap);
+            var minimumAnswerWidth = Math.Min(280, Math.Max(180, usableWidth * 0.55));
+            var previewWidthLimit = Math.Max(1, usableWidth - minimumAnswerWidth);
+            previewWidth = Math.Min(previewWidthLimit, contentHeight * aspectRatio);
+            previewHeight = previewWidth / aspectRatio;
+
+            FirstRow.Height = new GridLength(1, GridUnitType.Star);
+            LayoutGapRow.Height = new GridLength(0);
+            SecondRow.Height = new GridLength(0);
+            FirstColumn.Width = new GridLength(previewWidth);
+            LayoutGapColumn.Width = new GridLength(LayoutGap);
+            SecondColumn.Width = new GridLength(1, GridUnitType.Star);
+            Grid.SetRow(PreviewContainer, 0);
+            Grid.SetColumn(PreviewContainer, 0);
+            Grid.SetRow(AnswerPane, 0);
+            Grid.SetColumn(AnswerPane, 2);
+        }
+
+        PreviewContainer.Width = previewWidth;
+        PreviewContainer.Height = previewHeight;
+        PreviewImage.Width = previewWidth;
+        PreviewImage.Height = previewHeight;
+    }
+
+    private void SetProgrammaticSize(double width, double height)
+    {
+        var generation = ++programmaticResizeGeneration;
+        programmaticResizePending = true;
+        Width = width;
+        Height = height;
+        ClearProgrammaticResizeFlag(generation);
+    }
+
+    private void SetProgrammaticHeight(double height)
+    {
+        var generation = ++programmaticResizeGeneration;
+        programmaticResizePending = true;
+        Height = height;
+        ClearProgrammaticResizeFlag(generation);
+    }
+
+    private void ClearProgrammaticResizeFlag(int generation)
+    {
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+        {
+            if (generation == programmaticResizeGeneration)
+                programmaticResizePending = false;
+        }));
     }
 
     private void ScheduleAnswerResize()

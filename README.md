@@ -10,11 +10,11 @@ A free, open-source Windows utility for getting an answer about a selected scree
 
 Press **Ctrl+Alt+S**, then:
 
-- **Left-drag** to capture and automatically ask about the selection when connected.
-- **Right-drag** to capture and enter an instruction before sending.
+- **Left-drag** to capture and enter an instruction before sending.
+- **Right-drag** to capture and ask about the selection immediately when connected.
 - Press **Esc** during selection to cancel.
 
-Responses stream into a floating window with Markdown, code blocks, tables, and LaTeX rendering. The window grows with the answer, can be dragged or minimized to the taskbar, and opens in the center of the capture monitor.
+Responses stream into a resizable floating window with Markdown, code blocks, tables, and LaTeX rendering. The screenshot scales with the window without changing its proportions. The window grows with the answer until you resize it manually, can be dragged or minimized to the taskbar, and opens in the center of the capture monitor.
 
 ## Status
 
@@ -41,7 +41,7 @@ ClipAsk focuses on a single capture and response. It has no follow-up chat or ca
 
 The app is free; model access and usage limits depend on your ChatGPT account and the models available through the Codex runtime. Free software does not mean unlimited AI usage. ClipAsk is an independent project and is not affiliated with or endorsed by OpenAI.
 
-Captures stay local until a valid selection is released. A left-drag sends that selection automatically when connected; a right-drag waits for your instruction and Send. Captures are also copied to the Windows clipboard. See [Privacy](PRIVACY.md) for local storage and provider behavior.
+Captures stay local until you commit the applicable action. A left-drag waits for your instruction and **Send**; a right-drag sends the completed selection immediately when connected. Captures are also copied to the Windows clipboard. See [Privacy](PRIVACY.md) for local storage and provider behavior.
 
 ## Build on Windows
 

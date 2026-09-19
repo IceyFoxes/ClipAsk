@@ -87,7 +87,7 @@ internal sealed class CaptureOverlay : Window
         UpdateDim();
         hint = new TextBlock
         {
-            Text = "Left-drag to analyze · Right-drag to add an instruction · Esc cancels",
+            Text = "Left-drag to add an instruction · Right-drag to ask instantly · Esc cancels",
             Foreground = Brushes.White,
             Background = new SolidColorBrush(Color.FromArgb(190, 20, 25, 35)),
             Padding = new Thickness(10, 6, 10, 6),
@@ -108,13 +108,13 @@ internal sealed class CaptureOverlay : Window
         start = args.GetPosition(canvas);
         selection.Width = 0;
         selection.Height = 0;
-        selection.Stroke = dragButton == MouseButton.Right
+        selection.Stroke = dragButton == MouseButton.Left
             ? new SolidColorBrush(Color.FromRgb(181, 155, 255))
             : new SolidColorBrush(Color.FromRgb(120, 169, 255));
         if (hint is not null)
-            hint.Text = dragButton == MouseButton.Right
+            hint.Text = dragButton == MouseButton.Left
                 ? "Release to add an instruction · Esc cancels"
-                : "Release to analyze · Esc cancels";
+                : "Release to ask instantly · Esc cancels";
         UpdateDim();
         CaptureMouse();
         args.Handled = true;
@@ -143,7 +143,7 @@ internal sealed class CaptureOverlay : Window
         if (rect.IsUsable)
         {
             finished = true;
-            selectionCompleted(rect, dragButton == MouseButton.Right ? CaptureIntent.Prompted : CaptureIntent.Automatic);
+            selectionCompleted(rect, IntentForButton(dragButton));
         }
         else
         {
@@ -151,6 +151,13 @@ internal sealed class CaptureOverlay : Window
         }
         args.Handled = true;
     }
+
+    internal static CaptureIntent IntentForButton(MouseButton button) => button switch
+    {
+        MouseButton.Left => CaptureIntent.Prompted,
+        MouseButton.Right => CaptureIntent.Automatic,
+        _ => throw new ArgumentOutOfRangeException(nameof(button), button, "Only left and right drag buttons are supported.")
+    };
 
     private void UpdateSelection(WpfPoint current)
     {

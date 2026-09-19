@@ -75,6 +75,18 @@ internal static class SmokeRenderer
             throw new InvalidOperationException("Compact ResultWindow smoke state did not match expected completed-card state.");
         Save(compact, Path.Combine(outputDirectory, "smoke-render.png"));
 
+        var resizableWindow = new ResultWindow();
+        resizableWindow.SetPreview(source, ResultLayoutCalculator.Calculate(new(800, 300, 1920, 1080)));
+        resizableWindow.SetAccount("ChatGPT · free", true);
+        resizableWindow.SetAnswer("The preview scales with the window while preserving its aspect ratio.", true);
+        resizableWindow.ResizeForSmoke(760, 480);
+        var resizedRender = RenderWindow(resizableWindow);
+        var resizedAspectRatio = resizableWindow.PreviewDisplayWidth / resizableWindow.PreviewDisplayHeight;
+        if (!resizableWindow.IsUserResizeEnabled || Math.Abs(resizedAspectRatio - (800d / 300d)) > 0.0001)
+            throw new InvalidOperationException("The resizable result window did not preserve the screenshot aspect ratio.");
+        Save(resizedRender, Path.Combine(outputDirectory, "resizable-window.png"));
+        resizableWindow.DismissForSmoke();
+
         window.SetAnswer(UnicodeAnswer, true);
         window.SetStatus("Demo - not an AI response");
         if (window.Answer != UnicodeAnswer)
@@ -95,6 +107,12 @@ internal static class SmokeRenderer
         window.SetBusy(false);
         window.SetStatus("Response complete");
         Save(RenderWindow(window), Path.Combine(outputDirectory, "split-complete.png"));
+        window.ResizeForSmoke(900, 600);
+        var resizedSplitRender = RenderWindow(window);
+        var resizedSplitAspectRatio = window.PreviewDisplayWidth / window.PreviewDisplayHeight;
+        if (Math.Abs(resizedSplitAspectRatio - (450d / 1200d)) > 0.0001)
+            throw new InvalidOperationException("The resized split layout did not preserve the screenshot aspect ratio.");
+        Save(resizedSplitRender, Path.Combine(outputDirectory, "resizable-split-window.png"));
 
         var stripSource = CreateSource(1600, 120, "What does this banner mean?");
         window.SetPreview(stripSource, ResultLayoutCalculator.Calculate(new(1600, 120, 1920, 1080)));
@@ -164,6 +182,9 @@ internal static class SmokeRenderer
 
         var overlayCancelled = 0;
         var overlayClosed = false;
+        if (CaptureOverlay.IntentForButton(System.Windows.Input.MouseButton.Left) != CaptureIntent.Prompted ||
+            CaptureOverlay.IntentForButton(System.Windows.Input.MouseButton.Right) != CaptureIntent.Automatic)
+            throw new InvalidOperationException("Capture buttons did not map left-drag to prompted and right-drag to automatic.");
         var overlay = new CaptureOverlay(source, new System.Drawing.Rectangle(-32000, -32000, 800, 300), (_, _) => { }, () => overlayCancelled++);
         overlay.ShowActivated = false;
         overlay.Closed += (_, _) => overlayClosed = true;
@@ -178,10 +199,12 @@ internal static class SmokeRenderer
             passed = true,
             source = "smoke-source.png",
             render = "smoke-render.png",
+            resizableWindow = "resizable-window.png",
             compactUnicode = "compact-unicode.png",
             compactInitial = "compact-initial.png",
             splitPreparing = "split-preparing.png",
             splitComplete = "split-complete.png",
+            resizableSplitWindow = "resizable-split-window.png",
             formattedComplete = "formatted-complete.png",
             formattedCodeTable = "formatted-code-table.png",
             streamingExpanded = "streaming-expanded.png",
@@ -199,6 +222,10 @@ internal static class SmokeRenderer
             primaryCollapsed = true,
             actionsMenuClosed = true,
             showInTaskbar = true,
+            userResizeEnabled = true,
+            resizedPreviewAspectRatioPreserved = true,
+            leftDragPrompted = true,
+            rightDragAutomatic = true,
             saveImageEnabled,
             saveLocationRemembered = true,
             streamingExpandedAfterMove = true,
