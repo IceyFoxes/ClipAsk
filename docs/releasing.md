@@ -41,8 +41,8 @@ This checklist records what release packaging validates and which manual coverag
 - [x] Install the Windows 10/11 SDK component that provides `MakeAppx.exe` and the Windows App Certification Kit.
 - [x] Build the unsigned Store MSIX with `scripts/package-store.sh` and the assigned identity.
 - [ ] Validate install, startup, managed sign-in, capture, rendering, upgrade, and uninstall on a clean Windows 10/11 x64 machine.
-- [x] Run the Windows App Certification Kit against the identity-bound MSIX and review the complete report.
-- [ ] Confirm Store acceptance of the optional blocked-executables finding caused by the bundled Codex and self-contained .NET runtime; include the prepared certification explanation.
+- [x] Run the Windows App Certification Kit against the identity-bound MSIX: the complete, non-partial run reports `OVERALL_RESULT=PASS`.
+- [x] Document WACK's optional blocked-executables diagnostic for the bundled Codex and self-contained .NET runtime in the prepared certification explanation.
 - [ ] Finish the Partner Center listing, screenshots, age rating, availability, privacy URL, and restricted-capability explanation.
 
 The Store package is not a direct replacement for the GitHub installer until the clean-machine and certification checks pass. See [`store/README.md`](../store/README.md) for the exact handoff.
