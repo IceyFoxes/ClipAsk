@@ -55,6 +55,7 @@ public partial class App : System.Windows.Application
     private bool connected;
     private bool launchInBackground;
     private bool startupEnabled;
+    private bool startupManagedByWindows;
     private bool centerResultOnResize;
     private bool positioningResult;
     private double resultDipScale = 1;
@@ -230,8 +231,9 @@ public partial class App : System.Windows.Application
         {
             result.SetStatus("Could not update the old startup entry; check startup settings.");
         }
-        startupEnabled = StartupRegistration.IsEnabled();
-        result.SetStartupEnabled(startupEnabled);
+        startupManagedByWindows = StartupRegistration.UsesPackagedStartupTask;
+        startupEnabled = startupManagedByWindows || StartupRegistration.IsEnabled();
+        result.SetStartupEnabled(startupEnabled, startupManagedByWindows);
         if (!launchInBackground)
             result.Show();
         trayIcon = LoadTrayIcon();
@@ -275,12 +277,12 @@ public partial class App : System.Windows.Application
         menu.Items.Add("Show", null, (_, _) => ShowResult());
         menu.Items.Add("Connect ChatGPT", null, (_, _) => RunUiAsync(ToggleConnectionAsync));
         menu.Items.Add(new Forms.ToolStripSeparator());
-        trayStartupItem = new Forms.ToolStripMenuItem("Start ClipAsk on startup")
+        trayStartupItem = new Forms.ToolStripMenuItem(startupManagedByWindows ? "Manage startup in Windows Settings…" : "Start ClipAsk on startup")
         {
-            Checked = startupEnabled,
+            Checked = !startupManagedByWindows && startupEnabled,
             CheckOnClick = false
         };
-        trayStartupItem.Click += (_, _) => SetStartupEnabled(!startupEnabled);
+        trayStartupItem.Click += (_, _) => SetStartupEnabled(startupManagedByWindows || !startupEnabled);
         menu.Items.Add(trayStartupItem);
         menu.Items.Add("About ClipAsk & licenses…", null, (_, _) => ShowAbout());
         menu.Items.Add(new Forms.ToolStripSeparator());
@@ -328,16 +330,22 @@ public partial class App : System.Windows.Application
     {
         try
         {
+            if (startupManagedByWindows)
+            {
+                StartupRegistration.OpenPackagedStartupSettings();
+                result?.SetStatus("Manage ClipAsk in Windows Startup Apps settings");
+                return;
+            }
             StartupRegistration.SetEnabled(enabled);
             startupEnabled = StartupRegistration.IsEnabled();
-            result?.SetStartupEnabled(startupEnabled);
+            result?.SetStartupEnabled(startupEnabled, false);
             if (trayStartupItem is not null)
                 trayStartupItem.Checked = startupEnabled;
             result?.SetStatus(startupEnabled ? "ClipAsk will start on startup" : "Start on startup disabled");
         }
         catch (Exception exception)
         {
-            result?.SetStartupEnabled(startupEnabled);
+            result?.SetStartupEnabled(startupEnabled, startupManagedByWindows);
             if (trayStartupItem is not null)
                 trayStartupItem.Checked = startupEnabled;
             result?.SetStatus(DescribeUiException(exception));

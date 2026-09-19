@@ -30,6 +30,21 @@ This checklist records what release packaging validates and which manual coverag
 - [ ] Check multiple displays and DPI scales, offline failures, quota exhaustion, and unsupported account/model states.
 - [ ] Record a short demo using synthetic or explicitly shareable content, showing the real capture-to-answer delay.
 - [x] Review repository contents and privacy before making it public, then publish a beta release with tested requirements, known issues, binaries, checksums, and matching source.
+- [x] Publish Beta 3 with centered startup windows, proportional resizing, and the prompt-first left-drag flow.
+
+## Microsoft Store track
+
+- [x] Add an x64 MSIX manifest template, required tile assets, listing copy, and a reproducible Store packaging script.
+- [x] Keep Partner Center identity and publisher values out of source control and inject them at packaging time.
+- [x] Use a packaged Windows Startup Task instead of creating a duplicate Run registry entry.
+- [ ] Reserve **ClipAsk** in Partner Center and copy its exact package identity values.
+- [ ] Install the Windows 10/11 SDK component that provides `MakeAppx.exe` and the Windows App Certification Kit.
+- [ ] Build the unsigned Store MSIX with `scripts/package-store.sh` and the assigned identity.
+- [ ] Validate install, startup, managed sign-in, capture, rendering, upgrade, and uninstall on a clean Windows 10/11 x64 machine.
+- [ ] Run the Windows App Certification Kit and resolve every failure before submission.
+- [ ] Finish the Partner Center listing, screenshots, age rating, availability, privacy URL, and restricted-capability explanation.
+
+The Store package is not a direct replacement for the GitHub installer until the clean-machine and certification checks pass. See [`store/README.md`](../store/README.md) for the exact handoff.
 
 Never upload output from `artifacts/local-releases`; it was intentionally built from tracked changes. A clean release run clears stale same-version ZIP, installer, source, and checksum files before producing the requested artifact set. The repository or the exact tagged source must be publicly accessible before distributing GPL binaries.
 

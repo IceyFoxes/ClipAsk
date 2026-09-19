@@ -259,10 +259,12 @@ internal partial class ResultWindow : Window
         ModelDetailsItem.Header = $"Model: {modelText}";
     }
 
-    public void SetStartupEnabled(bool enabled)
+    public void SetStartupEnabled(bool enabled, bool managedByWindows = false)
     {
         startupEnabled = enabled;
-        StartupItem.Header = enabled ? "✓  Start ClipAsk on startup" : "Start ClipAsk on startup";
+        StartupItem.Header = managedByWindows
+            ? "Manage startup in Windows Settings…"
+            : enabled ? "✓  Start ClipAsk on startup" : "Start ClipAsk on startup";
     }
 
     public void SetTiming(CaptureTiming? timing)

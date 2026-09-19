@@ -2,4 +2,5 @@
   <Project Path="src/ClipAsk.Core/ClipAsk.Core.csproj" />
   <Project Path="src/ClipAsk.Desktop/ClipAsk.Desktop.csproj" />
   <Project Path="tests/ClipAsk.Core.Tests/ClipAsk.Core.Tests.csproj" />
+  <Project Path="tools/ClipAsk.StorePrep/ClipAsk.StorePrep.csproj" />
 </Solution>

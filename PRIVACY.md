@@ -18,7 +18,7 @@ ClipAsk sends requests through the official Codex runtime using your ChatGPT acc
 - The latest capture and response are held for the active window. There is no app-level history browser. Provider threads are requested as ephemeral and runtime history persistence is disabled; this is not a claim that the remote provider retains no data or that runtime diagnostic files can never exist.
 - Save image as writes a PNG only when requested. `last-save-folder.txt` remembers the destination directory. The old `%LOCALAPPDATA%\Screenshot` preference is read as a fallback after the rename; credentials are not migrated.
 - The Windows clipboard can retain captures independently of the app. Windows clipboard history or sync, if enabled by you, follows your Windows settings.
-- Enabling startup writes a per-user Windows Run registry entry; disabling it removes the ClipAsk entry.
+- Installer and portable builds use a per-user Windows Run registry entry when startup is enabled. The Microsoft Store package instead declares a Windows Startup Task; Windows exposes its control in Startup Apps settings.
 - Development verification writes synthetic UI images and diagnostic results under `.devin/evidence`, with an isolated probe state under the Windows app-data diagnostics folder.
 
 ## Tools and telemetry

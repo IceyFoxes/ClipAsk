@@ -22,7 +22,7 @@ ClipAsk is available as a public beta for Windows 10/11 x64. The installer and p
 
 ## Download
 
-Download **[ClipAsk 0.1.0 Beta 2](https://github.com/IceyFoxes/ClipAsk/releases/tag/v0.1.0-beta.2)**. For most people, use `ClipAsk-0.1.0-win-x64-Setup.exe`; the ZIP is the portable alternative.
+Download **[ClipAsk 0.1.0 Beta 3](https://github.com/IceyFoxes/ClipAsk/releases/tag/v0.1.0-beta.3)**. For most people, use `ClipAsk-0.1.0-win-x64-Setup.exe`; the ZIP is the portable alternative.
 
 Because this beta is unsigned, Windows SmartScreen may show an unknown-publisher warning. Verify the adjacent SHA-256 checksum before running it. The installer is per-user and does not require administrator access.
 
@@ -82,6 +82,8 @@ bash scripts/package.sh
 On native Windows, run `scripts/package.ps1`. Pass `-BuildInstaller` there, or set `BUILD_INSTALLER=1` for the bash launcher, when Inno Setup 6 is installed. Packaging verifies the exact Codex runtime allowlist and hashes, removes symbols, embeds corresponding ClipAsk source, and runs the published executable's synthetic UI and isolated provider checks before creating the portable ZIP. Clean artifacts and SHA-256 files are written under `artifacts/releases`; validation evidence is written under `artifacts/validation`; all build output is ignored by Git. Release packaging rejects tracked changes by default so its embedded source commit identifies the corresponding source. `ALLOW_DIRTY=1` (bash) or `-AllowDirty` (PowerShell) writes only to `artifacts/local-releases` and is for local package testing.
 
 The installer is per-user and does not require elevation. Its visible startup option is checked by default, can be unchecked during setup, and remains available from the app; its registry entry is removed on uninstall. ChatGPT passwords are never stored by ClipAsk; the managed sign-in token is kept in Windows Credential Manager. By default, uninstall retains account/runtime state and preferences under `%LOCALAPPDATA%\ClipAsk` for a future reinstall. The interactive uninstaller offers an unchecked option to sign out and remove that local data. See [the release checklist](docs/releasing.md) before distributing an artifact.
+
+Microsoft Store submission uses a separate unsigned MSIX build that Microsoft signs after acceptance. It requires the exact identity assigned after reserving ClipAsk in Partner Center and a Windows SDK installation containing `MakeAppx.exe`. See [the Store preparation guide](store/README.md); do not guess or commit account-specific identity values.
 
 ## Project structure
 
