@@ -38,10 +38,11 @@ This checklist records what release packaging validates and which manual coverag
 - [x] Keep Partner Center identity and publisher values out of source control and inject them at packaging time.
 - [x] Use a packaged Windows Startup Task instead of creating a duplicate Run registry entry.
 - [ ] Reserve **ClipAsk** in Partner Center and copy its exact package identity values.
-- [ ] Install the Windows 10/11 SDK component that provides `MakeAppx.exe` and the Windows App Certification Kit.
-- [ ] Build the unsigned Store MSIX with `scripts/package-store.sh` and the assigned identity.
+- [x] Install the Windows 10/11 SDK component that provides `MakeAppx.exe` and the Windows App Certification Kit.
+- [x] Build the unsigned Store MSIX with `scripts/package-store.sh` and the assigned identity.
 - [ ] Validate install, startup, managed sign-in, capture, rendering, upgrade, and uninstall on a clean Windows 10/11 x64 machine.
-- [ ] Run the Windows App Certification Kit and resolve every failure before submission.
+- [x] Run the Windows App Certification Kit against the identity-bound MSIX and review the complete report.
+- [ ] Confirm Store acceptance of the optional blocked-executables finding caused by the bundled Codex and self-contained .NET runtime; include the prepared certification explanation.
 - [ ] Finish the Partner Center listing, screenshots, age rating, availability, privacy URL, and restricted-capability explanation.
 
 The Store package is not a direct replacement for the GitHub installer until the clean-machine and certification checks pass. See [`store/README.md`](../store/README.md) for the exact handoff.

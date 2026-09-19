@@ -13,6 +13,8 @@
     <Version>0.1.0</Version>
     <EnableDefaultApplicationDefinition>true</EnableDefaultApplicationDefinition>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- WACK inspects the native WPF apphost manifest; its PerMonitorV2 declaration matches App's pre-UI WinForms configuration. -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
     <ApplicationIcon>..\..\assets\brand\clipask.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>

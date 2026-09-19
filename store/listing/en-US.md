@@ -52,6 +52,8 @@ ClipAsk is free and open-source under GPL-3.0-only. ChatGPT availability, models
 
 ClipAsk declares `runFullTrust` because it is a native WPF desktop utility that must register a global hotkey, display a region-selection overlay, use a notification-area icon, access the clipboard, save user-requested PNG files, and launch its bundled pinned Codex subprocess. It runs without elevation.
 
+The Windows App Certification Kit's optional blocked-executables test can report process-launch APIs and executable-name strings in the self-contained .NET runtime and the bundled official Codex runtime. ClipAsk deliberately launches only its pinned `codex.exe` provider process and user-requested Windows/browser surfaces. Its provider configuration disables shell execution, editing, browsing, external tools, apps, connectors, and plugins, and ClipAsk rejects tool requests.
+
 The app sends only the user-selected screenshot region after the user releases a valid selection and commits the applicable action. Left-drag opens an instruction field and requires Send; right-drag sends immediately. Pressing Esc cancels capture before upload.
 
 The package declares one startup task, enabled after first launch, which invokes `ClipAsk.exe --startup`. This registers the tray and global shortcut without displaying the main window. Users can disable it from Windows Startup Apps settings.
