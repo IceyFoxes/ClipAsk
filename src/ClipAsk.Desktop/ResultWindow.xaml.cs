@@ -22,6 +22,7 @@ internal partial class ResultWindow : Window
     private const double ContentInsets = 32;
     private const double LayoutGap = 12;
     private const double CompactPromptHeight = 48;
+    private const double AnswerContentTopSpacing = 6;
     private const double MinimumResponseHeight = 88;
     private const double PreparingResponseHeight = 112;
     private const int StreamingResizeCharacterStep = 96;
@@ -502,7 +503,9 @@ internal partial class ResultWindow : Window
         double previewHeight;
         if (layout.Mode == ResultLayoutMode.Stacked)
         {
-            var minimumAnswerHeight = instructionMode ? 96 : MinimumResponseHeight;
+            var minimumAnswerHeight = instructionMode
+                ? isConnected ? CompactPromptHeight : 96
+                : MinimumResponseHeight;
             var previewHeightLimit = Math.Max(1, contentHeight - LayoutGap - minimumAnswerHeight);
             previewWidth = Math.Min(contentWidth, previewHeightLimit * aspectRatio);
             previewHeight = previewWidth / aspectRatio;
@@ -598,7 +601,7 @@ internal partial class ResultWindow : Window
             var viewer = FindVisualChild<ScrollViewer>(AnswerDocument);
             var contentHeight = viewer is null || !double.IsFinite(viewer.ExtentHeight)
                 ? PreparingResponseHeight
-                : viewer.ExtentHeight + 12;
+                : viewer.ExtentHeight + AnswerContentTopSpacing;
             ResizeAnswerPane(Math.Max(MinimumResponseHeight, contentHeight));
         }));
     }

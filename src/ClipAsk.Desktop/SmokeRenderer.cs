@@ -74,6 +74,14 @@ internal static class SmokeRenderer
         if (window.Answer != "42.\n17 + 25 = 42." || previewPixelWidth != 800 || previewPixelHeight != 300 || !window.IsCopyEnabled || window.StopVisibility != Visibility.Collapsed || window.PrimaryActionVisibility != Visibility.Collapsed || window.IsActionsMenuOpen)
             throw new InvalidOperationException("Compact ResultWindow smoke state did not match expected completed-card state.");
         Save(compact, Path.Combine(outputDirectory, "smoke-render.png"));
+        var stableShortAnswerHeight = window.Height;
+        for (var measurement = 0; measurement < 3; measurement++)
+        {
+            window.SetAnswer("42.\n17 + 25 = 42.", true);
+            _ = RenderWindow(window);
+        }
+        if (window.Height > stableShortAnswerHeight + 0.5)
+            throw new InvalidOperationException("Repeated response measurement added empty space below a stable short answer.");
 
         var resizableWindow = new ResultWindow();
         resizableWindow.SetPreview(source, ResultLayoutCalculator.Calculate(new(800, 300, 1920, 1080)));
@@ -146,11 +154,22 @@ internal static class SmokeRenderer
         if (!window.IsInstructionSendEnabled)
             throw new InvalidOperationException("Prompted capture smoke state did not enable Send for a valid instruction.");
         Save(RenderWindow(window), Path.Combine(outputDirectory, "prompted-capture.png"));
+        var promptedWidth = window.Width;
+        var promptedHeight = window.Height;
+        var promptedPreviewWidth = window.PreviewDisplayWidth;
+        var promptedPreviewHeight = window.PreviewDisplayHeight;
+        window.ResizeForSmoke(promptedWidth, promptedHeight);
+        _ = RenderWindow(window);
+        if (Math.Abs(window.PreviewDisplayWidth - promptedPreviewWidth) > 0.5 ||
+            Math.Abs(window.PreviewDisplayHeight - promptedPreviewHeight) > 0.5)
+            throw new InvalidOperationException("Beginning a manual resize changed the compact prompted layout before the window size changed.");
 
         window.ClearPreview();
         window.SetAccount("Disconnected", false);
         window.SetWelcome("Select anything on screen with Ctrl+Alt+S.");
         window.SetStatus("Ready");
+        if (window.WindowStartupLocation != WindowStartupLocation.CenterScreen)
+            throw new InvalidOperationException("The result window is not configured to open centered on screen.");
         Save(RenderWindow(window), Path.Combine(outputDirectory, "compact-initial.png"));
         var restartManagerShutdownRequests = 0;
         window.RestartManagerShutdownRequested += () => restartManagerShutdownRequests++;
@@ -173,6 +192,8 @@ internal static class SmokeRenderer
         Save(RenderWindow(options), Path.Combine(outputDirectory, "answer-options.png"));
 
         var firstRun = new FirstRunWindow();
+        if (firstRun.WindowStartupLocation != WindowStartupLocation.CenterScreen)
+            throw new InvalidOperationException("First-run guidance is not configured to open centered on screen.");
         Save(RenderWindow(firstRun), Path.Combine(outputDirectory, "first-run.png"));
 
         var about = new AboutWindow();

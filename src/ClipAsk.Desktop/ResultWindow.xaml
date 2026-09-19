@@ -4,7 +4,7 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="ClipAsk" Icon="pack://application:,,,/Assets/clipask.ico" Width="420" Height="228"
         MinWidth="360" MinHeight="220" WindowStyle="None" ResizeMode="CanResize"
-        ShowActivated="False" ShowInTaskbar="True" Topmost="True" SizeChanged="WindowSizeChanged"
+        WindowStartupLocation="CenterScreen" ShowActivated="False" ShowInTaskbar="True" Topmost="True" SizeChanged="WindowSizeChanged"
         UseLayoutRounding="True" SnapsToDevicePixels="True" FontFamily="Aptos Display, Segoe UI Variable Display, Segoe UI"
         Background="#181B20" Foreground="#F2F4F7" KeyDown="WindowKeyDown">
     <shell:WindowChrome.WindowChrome>
