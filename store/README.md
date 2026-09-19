@@ -33,7 +33,7 @@ The script:
 - includes GPL corresponding source and third-party notices;
 - inserts the exact Partner Center identity into the manifest;
 - declares full-trust desktop execution and the `--startup` startup task;
-- validates and emits an unsigned `.msix` plus SHA-256 checksum.
+- uses MakeAppx to validate the package structure and emit an unsigned `.msix` plus SHA-256 checksum.
 
 Store submissions do not require a CA-trusted signature because Microsoft re-signs accepted MSIX packages. The unsigned output is not intended for direct sideloading. Sideload testing requires a trusted test certificate or loose-file developer registration.
 

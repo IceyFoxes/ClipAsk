@@ -81,8 +81,12 @@ if [[ -z "$makeappx_path" || ! -x "$makeappx_path" ]]; then
 fi
 
 rm -f "$package_path" "$package_path.sha256"
-"$makeappx_path" pack /d "$(wslpath -w "$layout_dir")" /p "$(wslpath -w "$package_path")" /o
-"$makeappx_path" validate /p "$(wslpath -w "$package_path")"
+makeappx_log="$store_root/makeappx.log"
+if ! "$makeappx_path" pack /d "$(wslpath -w "$layout_dir")" /p "$(wslpath -w "$package_path")" /o >"$makeappx_log" 2>&1; then
+  cat "$makeappx_log" >&2
+  exit 1
+fi
+tail -n 1 "$makeappx_log"
 (
   cd "$release_dir"
   sha256sum "$(basename "$package_path")" > "$(basename "$package_path").sha256"
