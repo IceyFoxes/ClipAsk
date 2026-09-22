@@ -81,6 +81,7 @@ internal static class SmokeRenderer
         window.PrepareImageActionsForSmoke();
         if (!window.IsActionsMenuTargetingPreview)
             throw new InvalidOperationException("The screenshot preview did not target the shared actions menu.");
+        Save(RenderElement(window.ActionsMenuForSmoke), Path.Combine(outputDirectory, "actions-menu.png"));
         var saveImageEnabled = window.IsSaveImageEnabled;
         if (!saveImageEnabled)
             throw new InvalidOperationException("Save image must be enabled when a capture is present.");
@@ -204,11 +205,14 @@ internal static class SmokeRenderer
         window.DismissForSmoke();
 
         var options = new AnswerOptionsWindow(
-            "Explain each step and keep the answer concise.",
-            null,
-            null,
+            "Explain the chart in plain English and calculate the break-even price.",
+            "gpt-5.6-luna",
+            "low",
             new CodexModelSelection("gpt-5.6-terra", "low", "GPT-5.6 Terra"),
-            [new CodexModelSelection("gpt-5.6-terra", "low", "GPT-5.6 Terra")]);
+            [
+                new CodexModelSelection("gpt-5.6-terra", "low", "GPT-5.6 Terra", ["low", "medium", "high"]),
+                new CodexModelSelection("gpt-5.6-luna", "low", "GPT-5.6 Luna", ["low", "medium", "high"])
+            ]);
         Save(RenderWindow(options), Path.Combine(outputDirectory, "answer-options.png"));
 
         var firstRun = new FirstRunWindow();
@@ -254,6 +258,7 @@ internal static class SmokeRenderer
             streamingExpanded = "streaming-expanded.png",
             latexParenthesesResponse = "latex-parentheses-response.png",
             promptedCapture = "prompted-capture.png",
+            actionsMenu = "actions-menu.png",
             answerOptions = "answer-options.png",
             firstRun = "first-run.png",
             aboutLicenses = "about-licenses.png",
@@ -360,6 +365,20 @@ internal static class SmokeRenderer
             throw new InvalidOperationException("ResultWindow content did not measure as expected.");
         var render = new RenderTargetBitmap((int)Math.Ceiling(width), (int)Math.Ceiling(height), 96, 96, PixelFormats.Pbgra32);
         render.Render(content);
+        render.Freeze();
+        return render;
+    }
+
+    private static RenderTargetBitmap RenderElement(FrameworkElement element)
+    {
+        element.ApplyTemplate();
+        element.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var width = Math.Max(1, element.DesiredSize.Width);
+        var height = Math.Max(1, element.DesiredSize.Height);
+        element.Arrange(new Rect(0, 0, width, height));
+        element.UpdateLayout();
+        var render = new RenderTargetBitmap((int)Math.Ceiling(width), (int)Math.Ceiling(height), 96, 96, PixelFormats.Pbgra32);
+        render.Render(element);
         render.Freeze();
         return render;
     }

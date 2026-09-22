@@ -91,6 +91,7 @@ internal partial class ResultWindow : Window
     public double PreviewDisplayHeight => PreviewContainer.Height;
     public Visibility InstructionComposerVisibility => InstructionComposer.Visibility;
     public bool IsInstructionSendEnabled => InstructionSendButton.IsEnabled;
+    internal ContextMenu ActionsMenuForSmoke => ActionsMenu;
     internal void SetInstructionForSmoke(string value) => InstructionTextBox.Text = value;
     internal void PrepareImageActionsForSmoke() => ConfigureActionsMenu(PreviewContainer, System.Windows.Controls.Primitives.PlacementMode.MousePoint);
     internal void BeginWindowMoveForSmoke() => windowMoveInProgress = true;
