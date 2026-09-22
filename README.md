@@ -17,7 +17,7 @@ ClipAsk is a free, open-source Windows utility for asking ChatGPT about a select
   <img src="docs/assets/clipask-demo.gif" alt="ClipAsk captures a call-option payoff chart, applies a custom instruction, streams an explanation, and shows image and model options" width="900" />
 </p>
 
-<p align="center"><sub>A taskbar-free feature tour built from a recorded ClipAsk interaction and exact app-rendered panels. The GIF loops automatically.</sub></p>
+<p align="center"><sub>ClipAsk in action!</sub></p>
 
 ## Install
 
