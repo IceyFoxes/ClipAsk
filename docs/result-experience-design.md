@@ -313,7 +313,7 @@ Motion reinforces continuity but must not sit on the critical path.
 - Window edges resize the surface; the preview scales proportionally and the answer reflows into the remaining space.
 - `Escape` dismisses the result when it has focus; during capture it cancels the overlay.
 - Copy and menu actions must be keyboard accessible.
-- The surface stays topmost while visible and appears in the taskbar so it can be minimized without cancelling an in-flight response.
+- The surface enters at the top of the normal desktop z-order without stealing focus. Other windows can cover it, and it remains available from the taskbar while a response is in flight.
 - Dragging is available from the compact visible header.
 
 ## Accessibility

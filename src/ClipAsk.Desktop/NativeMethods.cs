@@ -19,6 +19,9 @@ internal static class NativeMethods
     internal const int WmHotkey = 0x0312;
     internal const long EndSessionCloseApp = 0x00000001;
     internal const uint ModNoRepeat = 0x4000;
+    internal const uint SwpNoSize = 0x0001;
+    internal const uint SwpNoMove = 0x0002;
+    internal const uint SwpNoZOrder = 0x0004;
     internal const uint SwpNoActivate = 0x0010;
     internal const uint SwpShowWindow = 0x0040;
     private const int SwShowNoActivate = 4;
@@ -130,7 +133,23 @@ internal static class NativeMethods
         var handle = new WindowInteropHelper(window).Handle;
         if (handle == IntPtr.Zero)
             return;
+        SetWindowPos(handle, IntPtr.Zero, bounds.X, bounds.Y, bounds.Width, bounds.Height, SwpNoActivate | SwpNoZOrder | SwpShowWindow);
+    }
+
+    internal static void PositionTopmostWindow(Window window, System.Drawing.Rectangle bounds)
+    {
+        var handle = new WindowInteropHelper(window).Handle;
+        if (handle == IntPtr.Zero)
+            return;
         SetWindowPos(handle, HwndTopmost, bounds.X, bounds.Y, bounds.Width, bounds.Height, SwpNoActivate | SwpShowWindow);
+    }
+
+    internal static void RaiseWindowWithoutActivation(Window window)
+    {
+        var handle = new WindowInteropHelper(window).Handle;
+        if (handle == IntPtr.Zero)
+            return;
+        SetWindowPos(handle, IntPtr.Zero, 0, 0, 0, 0, SwpNoActivate | SwpNoMove | SwpNoSize | SwpShowWindow);
     }
 
     internal static void RestoreWindow(Window window, bool activate)

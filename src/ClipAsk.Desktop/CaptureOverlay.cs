@@ -48,7 +48,7 @@ internal sealed class CaptureOverlay : Window
         ShowActivated = true;
         Cursor = Cursors.Cross;
         Content = canvas;
-        SourceInitialized += (_, _) => NativeMethods.PositionWindow(this, monitorBounds);
+        SourceInitialized += (_, _) => NativeMethods.PositionTopmostWindow(this, monitorBounds);
         Loaded += (_, _) => BuildVisuals();
         MouseLeftButtonDown += OnMouseButtonDown;
         MouseRightButtonDown += OnMouseButtonDown;

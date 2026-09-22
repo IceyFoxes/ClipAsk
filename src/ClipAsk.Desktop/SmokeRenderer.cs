@@ -56,6 +56,8 @@ internal static class SmokeRenderer
         var window = new ResultWindow();
         if (!window.ShowInTaskbar)
             throw new InvalidOperationException("ResultWindow must be available from the taskbar when minimized.");
+        if (window.Topmost)
+            throw new InvalidOperationException("ResultWindow must use normal desktop z-order so other apps can cover it.");
         var dismissed = false;
         window.DismissRequested += () => dismissed = true;
         window.SetPreview(source, ResultLayoutCalculator.Calculate(new(800, 300, 1920, 1080)));
@@ -201,6 +203,8 @@ internal static class SmokeRenderer
             throw new InvalidOperationException("About did not identify the ClipAsk license.");
         Save(RenderWindow(about), Path.Combine(outputDirectory, "about-licenses.png"));
 
+        CreateReadmeDemo(outputDirectory, source);
+
         var overlayCancelled = 0;
         var overlayClosed = false;
         if (CaptureOverlay.IntentForButton(System.Windows.Input.MouseButton.Left) != CaptureIntent.Prompted ||
@@ -258,9 +262,46 @@ internal static class SmokeRenderer
             overlaySecondCancelNoDuplicate = overlayCancelled == 1,
             startupCommandQuoted = true,
             firstRunRemembered = true,
-            aboutLicenseShown = true
+            aboutLicenseShown = true,
+            readmeDemo = "readme-demo.gif"
         });
         File.WriteAllText(Path.Combine(outputDirectory, "smoke-diagnostics.json"), diagnostics);
+    }
+
+    private static void CreateReadmeDemo(string outputDirectory, BitmapSource source)
+    {
+        const int canvasWidth = 1200;
+        const int canvasHeight = 675;
+        var window = new ResultWindow();
+        var layout = ResultLayoutCalculator.Calculate(new(800, 300, 1920, 1080));
+
+        window.SetPreview(source, layout);
+        window.SetAccount("ChatGPT connected", true);
+        window.BeginInstructionEntry(true);
+        window.SetInstructionForSmoke("Explain this calculation.");
+        var prompted = RenderOnCanvas(RenderWindow(window), canvasWidth, canvasHeight);
+
+        window.SetPreview(source, layout);
+        window.SetAccount("ChatGPT connected", true);
+        window.SetStatus("Asking ChatGPT…");
+        window.SetBusy(true);
+        var asking = RenderOnCanvas(RenderWindow(window), canvasWidth, canvasHeight);
+
+        window.SetAnswer("## Answer\n\n$17 + 25 = 42$\n\nAdd the tens and ones separately:", false);
+        var streaming = RenderOnCanvas(RenderWindow(window), canvasWidth, canvasHeight);
+
+        window.SetAnswer("## Answer\n\n$17 + 25 = 42$\n\nAdd the tens and ones separately:\n\n- $10 + 20 = 30$\n- $7 + 5 = 12$\n\nThen $30 + 12 = 42$.", true);
+        window.SetBusy(false);
+        window.SetStatus("Response complete");
+        var complete = RenderOnCanvas(RenderWindow(window), canvasWidth, canvasHeight);
+
+        SaveAnimatedGif(
+            Path.Combine(outputDirectory, "readme-demo.gif"),
+            (prompted, 180),
+            (asking, 80),
+            (streaming, 120),
+            (complete, 280));
+        window.DismissForSmoke();
     }
 
     private static RenderTargetBitmap RenderWindow(Window window)
@@ -281,6 +322,24 @@ internal static class SmokeRenderer
         render.Render(content);
         render.Freeze();
         return render;
+    }
+
+    private static RenderTargetBitmap RenderOnCanvas(BitmapSource bitmap, int width, int height)
+    {
+        const double padding = 36;
+        var scale = Math.Min(1, Math.Min((width - (padding * 2)) / bitmap.PixelWidth, (height - (padding * 2)) / bitmap.PixelHeight));
+        var renderedWidth = bitmap.PixelWidth * scale;
+        var renderedHeight = bitmap.PixelHeight * scale;
+        var visual = new DrawingVisual();
+        using (var drawing = visual.RenderOpen())
+        {
+            drawing.DrawRectangle(new SolidColorBrush(Color.FromRgb(15, 17, 21)), null, new Rect(0, 0, width, height));
+            drawing.DrawImage(bitmap, new Rect((width - renderedWidth) / 2, (height - renderedHeight) / 2, renderedWidth, renderedHeight));
+        }
+        var canvas = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+        canvas.Render(visual);
+        canvas.Freeze();
+        return canvas;
     }
 
     private static RenderTargetBitmap CreateSource() => CreateSource(800, 300, "What is 17 + 25?");
@@ -307,5 +366,30 @@ internal static class SmokeRenderer
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
         encoder.Save(stream);
+    }
+
+    private static void SaveAnimatedGif(string path, params (BitmapSource Bitmap, int DelayCentiseconds)[] frames)
+    {
+        var encoder = new GifBitmapEncoder();
+        foreach (var frame in frames)
+        {
+            var metadata = new BitmapMetadata("gif");
+            metadata.SetQuery("/grctlext/Delay", (ushort)frame.DelayCentiseconds);
+            metadata.SetQuery("/grctlext/Disposal", (byte)2);
+            encoder.Frames.Add(BitmapFrame.Create(frame.Bitmap, null, metadata, null));
+        }
+
+        using var encoded = new MemoryStream();
+        encoder.Save(encoded);
+        var bytes = encoded.ToArray();
+        var packedFields = bytes[10];
+        var colorTableSize = (packedFields & 0x80) == 0 ? 0 : 3 * (1 << ((packedFields & 0x07) + 1));
+        var extensionOffset = 13 + colorTableSize;
+        byte[] loopExtension = [0x21, 0xFF, 0x0B, (byte)'N', (byte)'E', (byte)'T', (byte)'S', (byte)'C', (byte)'A', (byte)'P', (byte)'E', (byte)'2', (byte)'.', (byte)'0', 0x03, 0x01, 0x00, 0x00, 0x00];
+
+        using var stream = File.Create(path);
+        stream.Write(bytes, 0, extensionOffset);
+        stream.Write(loopExtension);
+        stream.Write(bytes, extensionOffset, bytes.Length - extensionOffset);
     }
 }

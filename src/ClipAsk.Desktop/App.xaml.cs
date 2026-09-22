@@ -404,8 +404,12 @@ public partial class App : System.Windows.Application
         ShowResultCentered(monitor.WorkArea, dipScale, intent == CaptureIntent.Prompted);
         if (intent == CaptureIntent.Prompted)
             result.FocusInstruction();
-        else if (originalForeground != IntPtr.Zero)
-            NativeMethods.SetForegroundWindow(originalForeground);
+        else
+        {
+            if (originalForeground != IntPtr.Zero)
+                NativeMethods.SetForegroundWindow(originalForeground);
+            NativeMethods.RaiseWindowWithoutActivation(result);
+        }
         var captureTiming = timing;
         _ = EncodeAndAnswerAsync(currentImage, intent, captureTiming, generation.Next());
     }
