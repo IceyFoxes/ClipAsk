@@ -32,6 +32,7 @@ This checklist records what release packaging validates and which manual coverag
 - [x] Review repository contents and privacy before making it public, then publish a beta release with tested requirements, known issues, binaries, checksums, and matching source.
 - [x] Publish Beta 3 with centered startup windows, proportional resizing, and the prompt-first left-drag flow.
 - [x] Prepare Beta 4 with normal result-window z-order, the revised README, and the longer reference-question demo.
+- [x] Prepare Beta 5 with safer currency/LaTeX rendering and a looping demo recorded from a real browser interaction.
 
 ## Microsoft Store track
 

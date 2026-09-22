@@ -109,6 +109,13 @@ internal static class AnswerDocumentRenderer
 
     private static void NormalizeInlineMathDelimiters(ReadOnlySpan<char> line, StringBuilder output)
     {
+        var normalized = new StringBuilder(line.Length);
+        NormalizeAlternateMathDelimiters(line, normalized);
+        NormalizeCurrencyAndEscapedMath(normalized.ToString().AsSpan(), output);
+    }
+
+    private static void NormalizeAlternateMathDelimiters(ReadOnlySpan<char> line, StringBuilder output)
+    {
         var inlineCodeTicks = 0;
         for (var index = 0; index < line.Length;)
         {
@@ -151,6 +158,105 @@ internal static class AnswerDocumentRenderer
 
             output.Append(line[index]);
             index++;
+        }
+    }
+
+    private static void NormalizeCurrencyAndEscapedMath(ReadOnlySpan<char> line, StringBuilder output)
+    {
+        var inlineCodeTicks = 0;
+        for (var index = 0; index < line.Length;)
+        {
+            if (line[index] == '`')
+            {
+                var runLength = 1;
+                while (index + runLength < line.Length && line[index + runLength] == '`')
+                    runLength++;
+                output.Append(line.Slice(index, runLength));
+                if (inlineCodeTicks == 0)
+                    inlineCodeTicks = runLength;
+                else if (inlineCodeTicks == runLength)
+                    inlineCodeTicks = 0;
+                index += runLength;
+                continue;
+            }
+
+            if (inlineCodeTicks == 0 && line[index] == '$' && !IsEscaped(line, index) &&
+                (index + 1 >= line.Length || line[index + 1] != '$'))
+            {
+                var end = FindUnescapedDollar(line, index + 1);
+                if (end > index + 1)
+                {
+                    var formula = line[(index + 1)..end];
+                    if (formula.IndexOf("\\$", StringComparison.Ordinal) >= 0)
+                    {
+                        output.Append('$');
+                        AppendFormulaWithoutCurrencySymbols(formula, output);
+                        output.Append('$');
+                        index = end + 1;
+                        continue;
+                    }
+
+                    if (LooksLikeCurrencyCollision(line, index, end, formula))
+                    {
+                        output.Append("\\$");
+                        index++;
+                        continue;
+                    }
+                }
+            }
+
+            output.Append(line[index]);
+            index++;
+        }
+    }
+
+    private static bool LooksLikeCurrencyCollision(ReadOnlySpan<char> line, int start, int end, ReadOnlySpan<char> content)
+    {
+        if (start + 1 >= line.Length || !char.IsDigit(line[start + 1]))
+            return false;
+        if (end + 1 < line.Length && char.IsDigit(line[end + 1]))
+            return true;
+
+        var hasLetter = false;
+        var hasWhitespace = false;
+        var hasMathOperator = false;
+        foreach (var character in content)
+        {
+            hasLetter |= char.IsLetter(character);
+            hasWhitespace |= char.IsWhiteSpace(character);
+            hasMathOperator |= character is '=' or '+' or '-' or '*' or '/' or '^' or '_' or '\\' or '{' or '}' or '<' or '>';
+        }
+        return hasLetter && hasWhitespace && !hasMathOperator;
+    }
+
+    private static int FindUnescapedDollar(ReadOnlySpan<char> line, int start)
+    {
+        for (var index = start; index < line.Length; index++)
+        {
+            if (line[index] == '$' && !IsEscaped(line, index))
+                return index;
+        }
+        return -1;
+    }
+
+    private static bool IsEscaped(ReadOnlySpan<char> line, int index)
+    {
+        var backslashes = 0;
+        for (var cursor = index - 1; cursor >= 0 && line[cursor] == '\\'; cursor--)
+            backslashes++;
+        return backslashes % 2 != 0;
+    }
+
+    private static void AppendFormulaWithoutCurrencySymbols(ReadOnlySpan<char> formula, StringBuilder output)
+    {
+        for (var index = 0; index < formula.Length; index++)
+        {
+            if (formula[index] == '\\' && index + 1 < formula.Length && formula[index + 1] == '$')
+            {
+                index++;
+                continue;
+            }
+            output.Append(formula[index]);
         }
     }
 
@@ -417,39 +523,7 @@ internal static class AnswerDocumentRenderer
 
     private static void AddTextWithMath(InlineCollection target, string text)
     {
-        var cursor = 0;
-        while (cursor < text.Length)
-        {
-            var dollar = text.IndexOf('$', cursor);
-            var slash = text.IndexOf("\\(", cursor, StringComparison.Ordinal);
-            var start = dollar < 0 ? slash : slash < 0 ? dollar : Math.Min(dollar, slash);
-            if (start < 0)
-            {
-                target.Add(new Run(text[cursor..]));
-                return;
-            }
-            if (start > cursor)
-                target.Add(new Run(text[cursor..start]));
-
-            var slashDelimited = start == slash;
-            var contentStart = start + (slashDelimited ? 2 : 1);
-            var end = slashDelimited
-                ? text.IndexOf("\\)", contentStart, StringComparison.Ordinal)
-                : text.IndexOf('$', contentStart);
-            if (end < 0)
-            {
-                target.Add(new Run(text[start..]));
-                return;
-            }
-
-            var formula = text[contentStart..end];
-            var control = CreateFormula(formula, 15);
-            if (control is null)
-                target.Add(new Run(text[start..(end + (slashDelimited ? 2 : 1))]));
-            else
-                target.Add(new InlineUIContainer(control) { BaselineAlignment = BaselineAlignment.Center });
-            cursor = end + (slashDelimited ? 2 : 1);
-        }
+        target.Add(new Run(text));
     }
 
     private static bool TryGetDisplayFormula(ContainerInline? inline, out string formula)

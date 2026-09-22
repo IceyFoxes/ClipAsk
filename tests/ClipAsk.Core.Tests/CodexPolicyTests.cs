@@ -109,6 +109,8 @@ public sealed class CodexPolicyTests
         Assert.Contains("do not omit useful detail merely for brevity", AnswerPrompt.Instructions, StringComparison.Ordinal);
         Assert.Contains("Let formatting serve comprehension", AnswerPrompt.Instructions, StringComparison.Ordinal);
         Assert.Contains("Return valid CommonMark-compatible Markdown", AnswerPrompt.Instructions, StringComparison.Ordinal);
+        Assert.Contains("Escape currency dollar signs outside math as \\$", AnswerPrompt.Instructions, StringComparison.Ordinal);
+        Assert.Contains("Keep currency symbols out of LaTeX formulas", AnswerPrompt.Instructions, StringComparison.Ordinal);
         Assert.Contains("Do not turn a simple answer into an outline", AnswerPrompt.Instructions, StringComparison.Ordinal);
         Assert.DoesNotContain("Be concise", AnswerPrompt.Instructions, StringComparison.Ordinal);
         Assert.DoesNotContain("Answer the question in the attached screenshot", AnswerPrompt.Request, StringComparison.Ordinal);

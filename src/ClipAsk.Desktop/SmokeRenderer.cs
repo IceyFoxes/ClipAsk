@@ -45,6 +45,16 @@ internal static class SmokeRenderer
             !normalizedMath.Contains("`\\(literal\\)`", StringComparison.Ordinal) ||
             !normalizedMath.Contains("```text\n\\(literal\\)\n```", StringComparison.Ordinal))
             throw new InvalidOperationException("Alternate LaTeX delimiters were not normalized safely around code.");
+        var normalizedCurrencyMath = AnswerDocumentRenderer.NormalizeMathDelimiters("Premium: $200 total, or $2 per share. Equation: $\\$100 + \\$2 = \\$102$.");
+        if (normalizedCurrencyMath != "Premium: \\$200 total, or \\$2 per share. Equation: $100 + 2 = 102$.")
+            throw new InvalidOperationException($"Currency and inline math were not disambiguated safely: {normalizedCurrencyMath}");
+        var normalizedDollarMath = AnswerDocumentRenderer.NormalizeMathDelimiters("Math $P_1$, total $100 + 2 = 102$, and `price $200`.");
+        if (normalizedDollarMath != "Math $P_1$, total $100 + 2 = 102$, and `price $200`.")
+            throw new InvalidOperationException("Valid dollar-delimited math or inline code changed during currency normalization.");
+        var currencyDocument = AnswerDocumentRenderer.Create("**Premium paid:** $200 total, or $2 per share.\n\nThe break-even calculation is $\\$100 + \\$2 = \\$102$.");
+        var currencyDocumentText = new System.Windows.Documents.TextRange(currencyDocument.ContentStart, currencyDocument.ContentEnd).Text;
+        if (!currencyDocumentText.Contains("$200 total, or $2 per share.", StringComparison.Ordinal))
+            throw new InvalidOperationException("Currency prose was incorrectly rendered as inline math.");
         var startupCommand = StartupRegistration.BuildCommand(@"C:\Program Files\ClipAsk\ClipAsk.exe");
         if (startupCommand != "\"C:\\Program Files\\ClipAsk\\ClipAsk.exe\" --startup")
             throw new InvalidOperationException("Startup registration command was not quoted safely.");
@@ -137,6 +147,8 @@ internal static class SmokeRenderer
         Save(RenderWindow(window), Path.Combine(outputDirectory, "formatted-complete.png"));
         window.SetAnswer("```csharp\nvar answer = 17 + 25;\n```\n\n| Input | Output |\n| --- | ---: |\n| 17 + 25 | **42** |", true);
         Save(RenderWindow(window), Path.Combine(outputDirectory, "formatted-code-table.png"));
+        window.SetAnswer("**Premium paid:** $200 total, or $2 per share.\n\nThe break-even calculation is $\\$100 + \\$2 = \\$102$.", true);
+        Save(RenderWindow(window), Path.Combine(outputDirectory, "currency-math-response.png"));
 
         window.ClearAnswer();
         window.SetBusy(true);
@@ -238,6 +250,7 @@ internal static class SmokeRenderer
             resizableSplitWindow = "resizable-split-window.png",
             formattedComplete = "formatted-complete.png",
             formattedCodeTable = "formatted-code-table.png",
+            currencyMathResponse = "currency-math-response.png",
             streamingExpanded = "streaming-expanded.png",
             latexParenthesesResponse = "latex-parentheses-response.png",
             promptedCapture = "prompted-capture.png",

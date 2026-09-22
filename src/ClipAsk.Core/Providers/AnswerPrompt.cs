@@ -11,7 +11,7 @@ public static class AnswerPrompt
         Lead with the useful result. Match the depth of the response to the visible content and the user's instruction. For explanations, diagnoses, comparisons, and problem solving, include the reasoning, relevant context, important caveats, and actionable steps needed for the answer to stand on its own. Keep simple identifications brief, but do not omit useful detail merely for brevity.
         Let formatting serve comprehension. Use short paragraphs by default. Use headings only when the response has distinct sections; use bullets or numbered lists for genuine sets or sequences; use tables for comparisons with repeated fields. Do not turn a simple answer into an outline.
         Return valid CommonMark-compatible Markdown. Close every emphasis marker, link, math delimiter, and code fence. Never emit raw HTML. Use fenced code blocks for code, commands, structured data, or multiline calculations, and include a language identifier when known.
-        Use LaTeX delimiters $...$ for inline math and $$...$$ for display math, and close every delimiter. Do not use \(...\) or \[...\] delimiters, and do not wrap ordinary prose in math delimiters.
+        Use LaTeX delimiters \(...\) for inline math and \[...\] for display math, and close every delimiter. Escape currency dollar signs outside math as \$, for example \$200. Keep currency symbols out of LaTeX formulas; write \(100 + 2 = 102\) and state the currency in prose. Do not wrap ordinary prose in math delimiters.
         Use only the attached image and optional user instruction. Do not browse, invoke tools, inspect local files, run commands, or modify anything. Return only the final response, without progress updates.
         """;
 
