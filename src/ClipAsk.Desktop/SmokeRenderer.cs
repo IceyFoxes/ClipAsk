@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
@@ -13,6 +14,11 @@ namespace ClipAsk.Desktop;
 internal static class SmokeRenderer
 {
     private const string UnicodeAnswer = "“42” — that’s the answer…";
+    private const string ThreePhaseCommitQuestion = """
+        Step 4(c) is modified so the new coordinator sends GLOBAL-COMMIT immediately when any participant is in PRECOMMIT.
+
+        Is the modified 3PC recovery protocol safe? Give a concrete failure sequence or a proof.
+        """;
     private const string ThreePhaseCommitAnswer = """
         The modified step 4(c) is unsafe because it can cause some participants to commit while others later abort.
 
@@ -203,7 +209,7 @@ internal static class SmokeRenderer
             throw new InvalidOperationException("About did not identify the ClipAsk license.");
         Save(RenderWindow(about), Path.Combine(outputDirectory, "about-licenses.png"));
 
-        CreateReadmeDemo(outputDirectory, source);
+        CreateReadmeDemo(outputDirectory);
 
         var overlayCancelled = 0;
         var overlayClosed = false;
@@ -268,39 +274,60 @@ internal static class SmokeRenderer
         File.WriteAllText(Path.Combine(outputDirectory, "smoke-diagnostics.json"), diagnostics);
     }
 
-    private static void CreateReadmeDemo(string outputDirectory, BitmapSource source)
+    private static void CreateReadmeDemo(string outputDirectory)
     {
-        const int canvasWidth = 1200;
-        const int canvasHeight = 675;
+        const int canvasWidth = 1280;
+        const int canvasHeight = 720;
+        var source = CreateSource(960, 300, ThreePhaseCommitQuestion, 31);
         var window = new ResultWindow();
-        var layout = ResultLayoutCalculator.Calculate(new(800, 300, 1920, 1080));
+        var layout = ResultLayoutCalculator.Calculate(new(source.PixelWidth, source.PixelHeight, 1920, 1080));
+        var frames = new List<(BitmapSource Bitmap, int DelayCentiseconds)>();
 
         window.SetPreview(source, layout);
         window.SetAccount("ChatGPT connected", true);
         window.BeginInstructionEntry(true);
-        window.SetInstructionForSmoke("Explain this calculation.");
-        var prompted = RenderOnCanvas(RenderWindow(window), canvasWidth, canvasHeight);
+        window.SetInstructionForSmoke(string.Empty);
+        frames.Add((RenderOnCanvas(RenderWindow(window), canvasWidth, canvasHeight), 100));
+
+        const string instruction = "Explain whether this is safe. Give a concrete counterexample.";
+        for (var length = 8; length < instruction.Length; length += 8)
+        {
+            window.SetInstructionForSmoke(instruction[..length]);
+            frames.Add((RenderOnCanvas(RenderWindow(window), canvasWidth, canvasHeight), 12));
+        }
+        window.SetInstructionForSmoke(instruction);
+        frames.Add((RenderOnCanvas(RenderWindow(window), canvasWidth, canvasHeight), 110));
 
         window.SetPreview(source, layout);
         window.SetAccount("ChatGPT connected", true);
         window.SetStatus("Asking ChatGPT…");
         window.SetBusy(true);
         var asking = RenderOnCanvas(RenderWindow(window), canvasWidth, canvasHeight);
+        frames.Add((asking, 180));
 
-        window.SetAnswer("## Answer\n\n$17 + 25 = 42$\n\nAdd the tens and ones separately:", false);
-        var streaming = RenderOnCanvas(RenderWindow(window), canvasWidth, canvasHeight);
+        var streamedAnswers = new[]
+        {
+            "The modified step 4(c) is **unsafe** because it can cause some participants to commit while others later abort.",
+            "The modified step 4(c) is **unsafe** because it can cause some participants to commit while others later abort.\n\n## Counterexample\n\n1. $P_1$ is in `PRECOMMIT`; $P_2$ and $P_3$ are in `READY`.",
+            "The modified step 4(c) is **unsafe** because it can cause some participants to commit while others later abort.\n\n## Counterexample\n\n1. $P_1$ is in `PRECOMMIT`; $P_2$ and $P_3$ are in `READY`.\n2. The new coordinator sends **GLOBAL-COMMIT** immediately.\n3. Only $P_1$ receives it and commits; the coordinator crashes.",
+            "The modified step 4(c) is **unsafe** because it can cause some participants to commit while others later abort.\n\n## Counterexample\n\n1. $P_1$ is in `PRECOMMIT`; $P_2$ and $P_3$ are in `READY`.\n2. The new coordinator sends **GLOBAL-COMMIT** immediately.\n3. Only $P_1$ receives it and commits; the coordinator crashes.\n4. $P_2$ and $P_3$ elect another coordinator. Seeing only `READY`, they abort.",
+            ThreePhaseCommitAnswer
+        };
 
-        window.SetAnswer("## Answer\n\n$17 + 25 = 42$\n\nAdd the tens and ones separately:\n\n- $10 + 20 = 30$\n- $7 + 5 = 12$\n\nThen $30 + 12 = 42$.", true);
+        foreach (var answer in streamedAnswers)
+        {
+            window.SetAnswer(answer, false);
+            var streaming = RenderOnCanvas(RenderWindow(window), canvasWidth, canvasHeight);
+            frames.Add((streaming, 45));
+        }
+
+        window.SetAnswer(ThreePhaseCommitAnswer, true);
         window.SetBusy(false);
         window.SetStatus("Response complete");
         var complete = RenderOnCanvas(RenderWindow(window), canvasWidth, canvasHeight);
+        frames.Add((complete, 400));
 
-        SaveAnimatedGif(
-            Path.Combine(outputDirectory, "readme-demo.gif"),
-            (prompted, 180),
-            (asking, 80),
-            (streaming, 120),
-            (complete, 280));
+        SaveAnimatedGif(Path.Combine(outputDirectory, "readme-demo.gif"), frames);
         window.DismissForSmoke();
     }
 
@@ -344,7 +371,7 @@ internal static class SmokeRenderer
 
     private static RenderTargetBitmap CreateSource() => CreateSource(800, 300, "What is 17 + 25?");
 
-    private static RenderTargetBitmap CreateSource(int width, int height, string text)
+    private static RenderTargetBitmap CreateSource(int width, int height, string text, double? fontSizeOverride = null)
     {
         var source = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
         var sourceVisual = new DrawingVisual();
@@ -352,8 +379,14 @@ internal static class SmokeRenderer
         {
             drawing.DrawRectangle(Brushes.White, null, new Rect(0, 0, width, height));
             var typeface = new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
-            var fontSize = Math.Min(48, Math.Max(18, height * 0.16));
-            drawing.DrawText(new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, fontSize, Brushes.Black, 1), new Point(24, Math.Max(24, height * 0.20)));
+            var fontSize = fontSizeOverride ?? Math.Min(48, Math.Max(18, height * 0.16));
+            var formatted = new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, fontSize, Brushes.Black, 1)
+            {
+                MaxTextWidth = width - 48,
+                MaxTextHeight = height - 48,
+                Trimming = TextTrimming.WordEllipsis
+            };
+            drawing.DrawText(formatted, new Point(24, 24));
         }
         source.Render(sourceVisual);
         source.Freeze();
@@ -368,7 +401,7 @@ internal static class SmokeRenderer
         encoder.Save(stream);
     }
 
-    private static void SaveAnimatedGif(string path, params (BitmapSource Bitmap, int DelayCentiseconds)[] frames)
+    private static void SaveAnimatedGif(string path, IReadOnlyList<(BitmapSource Bitmap, int DelayCentiseconds)> frames)
     {
         var encoder = new GifBitmapEncoder();
         foreach (var frame in frames)
@@ -382,14 +415,31 @@ internal static class SmokeRenderer
         using var encoded = new MemoryStream();
         encoder.Save(encoded);
         var bytes = encoded.ToArray();
-        var packedFields = bytes[10];
-        var colorTableSize = (packedFields & 0x80) == 0 ? 0 : 3 * (1 << ((packedFields & 0x07) + 1));
-        var extensionOffset = 13 + colorTableSize;
-        byte[] loopExtension = [0x21, 0xFF, 0x0B, (byte)'N', (byte)'E', (byte)'T', (byte)'S', (byte)'C', (byte)'A', (byte)'P', (byte)'E', (byte)'2', (byte)'.', (byte)'0', 0x03, 0x01, 0x00, 0x00, 0x00];
+        var searchOffset = 0;
+        foreach (var frame in frames)
+        {
+            var extensionOffset = FindGraphicControlExtension(bytes, searchOffset);
+            if (extensionOffset < 0)
+                throw new InvalidOperationException("The GIF encoder omitted frame timing metadata.");
+
+            var delay = checked((ushort)frame.DelayCentiseconds);
+            bytes[extensionOffset + 4] = (byte)(delay & 0xff);
+            bytes[extensionOffset + 5] = (byte)(delay >> 8);
+            searchOffset = extensionOffset + 8;
+        }
 
         using var stream = File.Create(path);
-        stream.Write(bytes, 0, extensionOffset);
-        stream.Write(loopExtension);
-        stream.Write(bytes, extensionOffset, bytes.Length - extensionOffset);
+        stream.Write(bytes);
+    }
+
+    private static int FindGraphicControlExtension(byte[] bytes, int startIndex)
+    {
+        for (var index = startIndex; index <= bytes.Length - 8; index++)
+        {
+            if (bytes[index] == 0x21 && bytes[index + 1] == 0xf9 && bytes[index + 2] == 0x04)
+                return index;
+        }
+
+        return -1;
     }
 }

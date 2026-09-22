@@ -28,9 +28,10 @@ This checklist records what release packaging validates and which manual coverag
 - [ ] Test on a clean Windows machine without the development SDK, tool folders, or cached credentials.
 - [ ] Test install, managed sign-in, capture/cancel, Markdown/math, minimize/new capture, streaming while dragging, saved directory, startup, upgrade, and uninstall.
 - [ ] Check multiple displays and DPI scales, offline failures, quota exhaustion, and unsupported account/model states.
-- [ ] Record a short demo using synthetic or explicitly shareable content, showing the real capture-to-answer delay.
+- [x] Add a synthetic reference-question demo with paced instruction entry and response streaming; no live account request is made during generation.
 - [x] Review repository contents and privacy before making it public, then publish a beta release with tested requirements, known issues, binaries, checksums, and matching source.
 - [x] Publish Beta 3 with centered startup windows, proportional resizing, and the prompt-first left-drag flow.
+- [x] Prepare Beta 4 with normal result-window z-order, the revised README, and the longer reference-question demo.
 
 ## Microsoft Store track
 

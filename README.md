@@ -14,14 +14,14 @@
 ClipAsk is a free, open-source Windows utility for asking ChatGPT about a selected part of your screen. It keeps the interaction short: select something, read the answer, and return to your work.
 
 <p align="center">
-  <img src="docs/assets/clipask-demo.gif" alt="ClipAsk captures a calculation, accepts an instruction, and renders the answer with Markdown and LaTeX" width="900" />
+  <a href="docs/assets/clipask-demo.mp4?raw=1"><img src="docs/assets/clipask-demo.gif" alt="ClipAsk answers a three-phase commit safety question with a streamed Markdown and LaTeX response" width="900" /></a>
 </p>
 
-<p align="center"><sub>Synthetic example rendered by ClipAsk. No live account request was made.</sub></p>
+<p align="center"><sub>11-second synthetic example rendered by ClipAsk. Click the preview for the H.264 video. No live account request was made.</sub></p>
 
 ## Install
 
-Download [ClipAsk 0.1.0 Beta 3](https://github.com/IceyFoxes/ClipAsk/releases/tag/v0.1.0-beta.3). The installer is the easiest option; the ZIP is a portable alternative.
+Download [ClipAsk 0.1.0 Beta 4](https://github.com/IceyFoxes/ClipAsk/releases/tag/v0.1.0-beta.4). The installer is the easiest option; the ZIP is a portable alternative.
 
 - Windows 10 or 11 on x64
 - A ChatGPT account with Codex access
