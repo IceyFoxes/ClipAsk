@@ -4,6 +4,18 @@ namespace ClipAsk.Core.Providers;
 
 public sealed class AnswerStreamReducer(string threadId, string turnId)
 {
+    public const string RetryingText = "Connection to ChatGPT dropped. Retrying…";
+    public const string ServiceUnavailableStatus = "ChatGPT isn't responding";
+    public const string ServiceUnavailableDetail =
+        "**ChatGPT's Codex service isn't responding right now.**\n\n" +
+        "This is usually a temporary outage on OpenAI's side, not a problem with your capture or account. " +
+        "Your capture is still here, so you can try again once the service is back.\n\n" +
+        "Check status.openai.com for updates.";
+    public const string SignInStatus = "ChatGPT couldn't verify your sign-in";
+    public const string SignInDetail =
+        "**ChatGPT couldn't verify your sign-in.**\n\n" +
+        "Choose Disconnect ChatGPT from the ClipAsk menu, then connect ChatGPT again.";
+
     private static readonly HashSet<string> ActionTypes = new(StringComparer.Ordinal)
     {
         "commandExecution",
@@ -18,6 +30,10 @@ public sealed class AnswerStreamReducer(string threadId, string turnId)
 
     private readonly List<Message> messages = [];
     private bool terminal;
+    private bool retrying;
+
+    public bool IsRetrying => retrying;
+    public TurnErrorKind? FailureKind { get; private set; }
 
     public AnswerUpdate? Apply(string method, JsonElement parameters)
     {
@@ -37,13 +53,18 @@ public sealed class AnswerStreamReducer(string threadId, string turnId)
     private AnswerUpdate? ApplyError(JsonElement parameters)
     {
         if (parameters.TryGetProperty("willRetry", out var retry) && retry.ValueKind == JsonValueKind.True)
-            return null;
+        {
+            if (retrying)
+                return null;
+            retrying = true;
+            return new(AnswerUpdateKind.Retrying, RetryingText);
+        }
         var error = parameters.TryGetProperty("error", out var errorElement) ? errorElement : default;
-        var code = error.ValueKind == JsonValueKind.Object && error.TryGetProperty("codexErrorInfo", out var codeElement) && codeElement.ValueKind == JsonValueKind.String
-            ? codeElement.GetString()
-            : null;
-        return Fail(ErrorText(code));
+        return Fail(CodexPolicy.ClassifyTurnError(error));
     }
+
+    // Called when Codex has retried past CodexPolicy.ServiceRetryLimit without progress.
+    public AnswerUpdate GiveUpRetrying() => Fail(TurnErrorKind.ServiceUnavailable);
 
     private AnswerUpdate? ApplyItem(string method, JsonElement parameters)
     {
@@ -109,10 +130,7 @@ public sealed class AnswerStreamReducer(string threadId, string turnId)
             return new(AnswerUpdateKind.Cancelled, "Answer stopped.");
         }
         if (turn.TryGetProperty("error", out var error) && error.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
-        {
-            var code = error.TryGetProperty("codexErrorInfo", out var codeElement) && codeElement.ValueKind == JsonValueKind.String ? codeElement.GetString() : null;
-            return Fail(ErrorText(code));
-        }
+            return Fail(CodexPolicy.ClassifyTurnError(error));
         var visible = VisibleText();
         if (status == "completed" && !string.IsNullOrWhiteSpace(visible))
         {
@@ -161,7 +179,10 @@ public sealed class AnswerStreamReducer(string threadId, string turnId)
     private AnswerUpdate? VisibleTextUpdate()
     {
         var visible = VisibleText();
-        return string.IsNullOrEmpty(visible) ? null : new(AnswerUpdateKind.Text, visible);
+        if (string.IsNullOrEmpty(visible))
+            return null;
+        retrying = false;
+        return new(AnswerUpdateKind.Text, visible);
     }
 
     private string VisibleText() => string.Join("\n\n", messages.Select(message => message.Text).Where(text => !string.IsNullOrEmpty(text)));
@@ -172,11 +193,21 @@ public sealed class AnswerStreamReducer(string threadId, string turnId)
         return new(AnswerUpdateKind.Failed, text);
     }
 
-    private static string ErrorText(string? code) => code switch
+    // A rejected sign-in is reported as a service problem until the provider
+    // confirms that the account is actually signed out.
+    private AnswerUpdate Fail(TurnErrorKind kind)
     {
-        "usageLimitExceeded" or "rateLimitExceeded" or "sessionBudgetExceeded" => "Your ChatGPT plan allowance is exhausted for this response.",
-        _ => "Codex could not complete this response."
-    };
+        var update = kind switch
+        {
+            TurnErrorKind.Allowance => Fail("Your ChatGPT plan allowance is exhausted for this response."),
+            TurnErrorKind.SignIn or TurnErrorKind.ServiceUnavailable => new(AnswerUpdateKind.Failed, ServiceUnavailableStatus, ServiceUnavailableDetail),
+            _ => Fail("Codex could not complete this response.")
+        };
+        terminal = true;
+        retrying = false;
+        FailureKind = kind;
+        return update;
+    }
 
     private sealed class Message(string id, string text)
     {

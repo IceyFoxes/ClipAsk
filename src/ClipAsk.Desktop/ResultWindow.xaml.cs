@@ -49,6 +49,8 @@ internal partial class ResultWindow : Window
     private string modelText = "Automatic (resolved per capture)";
     private string welcomeText = "Select anything on screen with Ctrl+Alt+S.";
     private string status = string.Empty;
+    private string? busyNotice;
+    private string? failureDetail;
 
     public ResultWindow()
     {
@@ -83,6 +85,7 @@ internal partial class ResultWindow : Window
     public bool IsCopyEnabled => CopyButton.IsEnabled;
     public Visibility StopVisibility => StopButton.Visibility;
     public Visibility PrimaryActionVisibility => PrimaryActionButton.Visibility;
+    public string? PrimaryActionText => PrimaryActionButton.Content as string;
     public bool IsActionsMenuOpen => ActionsMenu.IsOpen;
     public bool IsActionsMenuTargetingPreview => ReferenceEquals(ActionsMenu.PlacementTarget, PreviewContainer);
     public bool IsSaveImageEnabled => SaveImageItem.IsEnabled;
@@ -181,6 +184,26 @@ internal partial class ResultWindow : Window
 
     public string Answer => answer;
 
+    // Shown in the answer area instead of a response. Copy stays disabled
+    // because the text is not an answer.
+    public void ShowFailure(string detail)
+    {
+        SetAnswerCore(string.Empty);
+        failureDetail = detail;
+        AnswerDocument.Document = AnswerDocumentRenderer.Create(detail);
+        answerComplete = false;
+        UpdateControls();
+        ScheduleAnswerResize();
+    }
+
+    public void SetBusyNotice(string? text)
+    {
+        busyNotice = text;
+        UpdateControls();
+    }
+
+    private bool HasDocument => !string.IsNullOrWhiteSpace(answer) || failureDetail is not null;
+
     public void ClearAnswer()
     {
         SetAnswerCore(string.Empty);
@@ -194,6 +217,7 @@ internal partial class ResultWindow : Window
     {
         var wasBusy = isBusy;
         isBusy = busy;
+        busyNotice = null;
         UpdateControls();
         if (instructionMode)
             ResizeForCurrentState();
@@ -347,16 +371,16 @@ internal partial class ResultWindow : Window
         AccountDetailsItem.Header = accountText;
         InstructionPlaceholder.Visibility = hasInstruction ? Visibility.Collapsed : Visibility.Visible;
         InstructionSendButton.IsEnabled = instructionMode && instructionReady && isConnected && hasInstruction;
-        PrimaryActionButton.Content = !isConnected ? "Connect ChatGPT" : !hasPreview ? "Capture" : "Analyze";
+        PrimaryActionButton.Content = !isConnected ? "Connect ChatGPT" : !hasPreview ? "Capture" : failureDetail is not null ? "Try again" : "Analyze";
         var primaryNeeded = !isBusy && (!isConnected || !hasPreview || (!hasAnswer && !instructionMode));
         PrimaryActionButton.Visibility = primaryNeeded ? Visibility.Visible : Visibility.Collapsed;
         if (instructionMode)
         {
             HintPanel.Visibility = Visibility.Collapsed;
         }
-        else if (!hasAnswer)
+        else if (!hasAnswer && failureDetail is null)
         {
-            HintText.Text = isBusy ? "Asking ChatGPT…" : !hasPreview ? welcomeText : !isConnected ? "Connect ChatGPT to analyze." : "Ready to analyze.";
+            HintText.Text = isBusy ? busyNotice ?? "Asking ChatGPT…" : !hasPreview ? welcomeText : !isConnected ? "Connect ChatGPT to analyze." : "Ready to analyze.";
             HintPanel.Visibility = Visibility.Visible;
         }
         else
@@ -373,6 +397,7 @@ internal partial class ResultWindow : Window
     private void SetAnswerCore(string value)
     {
         answer = value ?? string.Empty;
+        failureDetail = null;
         AnswerDocument.Document = AnswerDocumentRenderer.Create(answer);
     }
 
@@ -443,7 +468,7 @@ internal partial class ResultWindow : Window
             ResizeAnswerPane(isConnected ? CompactPromptHeight : 96);
             return;
         }
-        if (string.IsNullOrWhiteSpace(answer))
+        if (!HasDocument)
         {
             ResizeAnswerPane(isBusy ? PreparingResponseHeight : currentLayout.Value.AnswerHeight);
             return;
@@ -578,7 +603,7 @@ internal partial class ResultWindow : Window
 
     private void ScheduleAnswerResize()
     {
-        if (currentLayout is null || string.IsNullOrWhiteSpace(answer))
+        if (currentLayout is null || !HasDocument)
             return;
         if (windowMoveInProgress)
         {
@@ -596,7 +621,7 @@ internal partial class ResultWindow : Window
                 resizeAfterWindowMove = true;
                 return;
             }
-            if (currentLayout is null || instructionMode || string.IsNullOrWhiteSpace(answer))
+            if (currentLayout is null || instructionMode || !HasDocument)
                 return;
             lastMeasuredAnswerLength = answer.Length;
             AnswerDocument.ApplyTemplate();
@@ -605,6 +630,12 @@ internal partial class ResultWindow : Window
             var contentHeight = viewer is null || !double.IsFinite(viewer.ExtentHeight)
                 ? PreparingResponseHeight
                 : viewer.ExtentHeight + AnswerContentTopSpacing;
+            // The footer shares the answer pane, e.g. Try again after a failure.
+            if (Footer.Visibility == Visibility.Visible)
+            {
+                Footer.Measure(new Size(AnswerPane.ActualWidth > 0 ? AnswerPane.ActualWidth : double.PositiveInfinity, double.PositiveInfinity));
+                contentHeight += Footer.DesiredSize.Height;
+            }
             ResizeAnswerPane(Math.Max(MinimumResponseHeight, contentHeight));
         }));
     }

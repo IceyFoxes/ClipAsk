@@ -9,10 +9,13 @@ public enum AnswerUpdateKind
     Completed,
     Failed,
     Cancelled,
-    Model
+    Model,
+    Retrying
 }
 
-public sealed record AnswerUpdate(AnswerUpdateKind Kind, string Text);
+// Detail carries the longer explanation for failures that the result window
+// shows in place of an answer.
+public sealed record AnswerUpdate(AnswerUpdateKind Kind, string Text, string? Detail = null);
 
 public sealed record AnswerRequestOptions(
     string? Instruction = null,

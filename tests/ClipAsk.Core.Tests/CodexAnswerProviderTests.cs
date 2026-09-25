@@ -218,7 +218,82 @@ public sealed class CodexAnswerProviderTests
         Assert.DoesNotContain(host.Methods, method => method == "turn/interrupt");
     }
 
-    private static CodexAnswerProvider CreateProvider(FakeHost host) => new(new CodexLaunchOptions("C:\\fake\\codex.exe", "C:\\Screenshot\\Tests"), _ => host.Connection);
+    [Fact]
+    public async Task StopsRetryingAfterTheServiceLimitAndInterruptsTheTurn()
+    {
+        await using var host = new FakeHost();
+        await using var provider = CreateProvider(host, TimeSpan.FromMilliseconds(200));
+        var answer = CollectAsync(provider.AnswerAsync(Png(), TestContext.Current.CancellationToken));
+        await StartTurnAsync(host);
+        host.Notify("error", Json("""{"threadId":"t","turnId":"u","error":{"message":"stream disconnected","codexErrorInfo":{"responseStreamDisconnected":{"httpStatusCode":null}}},"willRetry":true}"""));
+        var interrupt = await host.NextAsync();
+        Assert.Equal("turn/interrupt", interrupt.GetProperty("method").GetString());
+        host.Respond(interrupt, Json("{}"));
+        var updates = await answer;
+        Assert.Contains(updates, update => update.Kind == AnswerUpdateKind.Retrying);
+        var failure = updates.Single(update => update.Kind == AnswerUpdateKind.Failed);
+        Assert.Equal(AnswerStreamReducer.ServiceUnavailableDetail, failure.Detail);
+    }
+
+    [Fact]
+    public async Task ProgressAfterARetryCancelsTheServiceLimit()
+    {
+        await using var host = new FakeHost();
+        await using var provider = CreateProvider(host, TimeSpan.FromMilliseconds(200));
+        var answer = CollectAsync(provider.AnswerAsync(Png(), TestContext.Current.CancellationToken));
+        await StartTurnAsync(host);
+        host.Notify("error", Json("""{"threadId":"t","turnId":"u","error":{"message":"retry"},"willRetry":true}"""));
+        host.Notify("item/started", Json("""{"threadId":"t","turnId":"u","item":{"type":"agentMessage","id":"a","phase":"final_answer","text":"42."}}"""));
+        await Task.Delay(400, TestContext.Current.CancellationToken);
+        host.Notify("turn/completed", Json("""{"threadId":"t","turn":{"id":"u","status":"completed","items":[],"error":null}}"""));
+        var updates = await answer;
+        Assert.Contains(updates, update => update.Kind == AnswerUpdateKind.Completed);
+        Assert.DoesNotContain(updates, update => update.Kind == AnswerUpdateKind.Failed);
+    }
+
+    [Fact]
+    public async Task RejectedSignInWithAValidRefreshIsReportedAsAServiceProblem()
+    {
+        var updates = await RejectSignInAsync(host => host.Respond(host.LastRequest, Json("""{"account":{"type":"chatgpt","planType":"free"},"requiresOpenaiAuth":true}""")));
+        Assert.Equal(AnswerStreamReducer.ServiceUnavailableDetail, updates.Single(update => update.Kind == AnswerUpdateKind.Failed).Detail);
+    }
+
+    [Fact]
+    public async Task RejectedSignInThatCannotRefreshAsksToReconnect()
+    {
+        var updates = await RejectSignInAsync(host => host.Fail(host.LastRequest, -32000, "refresh token revoked"));
+        Assert.Equal(AnswerStreamReducer.SignInDetail, updates.Single(update => update.Kind == AnswerUpdateKind.Failed).Detail);
+    }
+
+    private static async Task<List<AnswerUpdate>> RejectSignInAsync(Action<FakeHost> respondToRefresh)
+    {
+        await using var host = new FakeHost();
+        await using var provider = CreateProvider(host);
+        var answer = CollectAsync(provider.AnswerAsync(Png(), TestContext.Current.CancellationToken));
+        await StartTurnAsync(host);
+        host.Notify("error", Json("""{"threadId":"t","turnId":"u","error":{"message":"unauthorized","codexErrorInfo":"unauthorized"},"willRetry":false}"""));
+        var refresh = await host.NextAsync();
+        Assert.Equal("account/read", refresh.GetProperty("method").GetString());
+        Assert.True(refresh.GetProperty("params").GetProperty("refreshToken").GetBoolean());
+        respondToRefresh(host);
+        var interrupt = await host.NextAsync();
+        Assert.Equal("turn/interrupt", interrupt.GetProperty("method").GetString());
+        host.Respond(interrupt, Json("{}"));
+        return await answer;
+    }
+
+    private static async Task StartTurnAsync(FakeHost host)
+    {
+        await CompleteInitializeAsync(host);
+        await RespondConnectedAccountAndCatalogAsync(host);
+        var thread = await host.NextAsync();
+        host.Respond(thread, Json("""{"thread":{"id":"t"}}"""));
+        var turn = await host.NextAsync();
+        host.Respond(turn, Json("""{"turn":{"id":"u"}}"""));
+    }
+
+    private static CodexAnswerProvider CreateProvider(FakeHost host, TimeSpan? serviceRetryLimit = null) =>
+        new(new CodexLaunchOptions("C:\\fake\\codex.exe", "C:\\Screenshot\\Tests"), _ => host.Connection, serviceRetryLimit);
 
     private static async Task CompleteInitializeAsync(FakeHost host)
     {
@@ -275,10 +350,12 @@ public sealed class CodexAnswerProviderTests
         public JsonRpcConnection Connection { get; }
         public IReadOnlyList<string> Methods { get { lock (methodsGate) return methods.ToArray(); } }
 
+        public JsonElement LastRequest { get; private set; }
+
         public async Task<JsonElement> NextAsync()
         {
             var line = await writer.ReadAsync(TestContext.Current.CancellationToken).AsTask().WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-            return JsonDocument.Parse(line).RootElement.Clone();
+            return LastRequest = JsonDocument.Parse(line).RootElement.Clone();
         }
 
         public void Respond(JsonElement request, JsonElement result) => reader.Add(JsonSerializer.Serialize(new { id = request.GetProperty("id"), result }));

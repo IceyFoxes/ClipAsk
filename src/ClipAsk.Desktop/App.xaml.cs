@@ -546,6 +546,11 @@ public partial class App : System.Windows.Application
                         break;
                     case AnswerUpdateKind.Failed:
                         result?.SetStatus(update.Text);
+                        if (update.Detail is not null && string.IsNullOrWhiteSpace(result?.Answer))
+                            result?.ShowFailure(update.Detail);
+                        break;
+                    case AnswerUpdateKind.Retrying:
+                        result?.SetBusyNotice(update.Text);
                         break;
                     case AnswerUpdateKind.Cancelled:
                         result?.SetStatus("Stopped");

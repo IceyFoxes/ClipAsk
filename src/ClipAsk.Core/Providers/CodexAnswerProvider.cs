@@ -12,6 +12,7 @@ public sealed class CodexAnswerProvider : IAnswerProvider
     private readonly Func<CodexLaunchOptions, JsonRpcConnection>? transportFactory;
     private readonly SemaphoreSlim lifecycleGate = new(1, 1);
     private readonly SemaphoreSlim answerGate = new(1, 1);
+    private readonly TimeSpan serviceRetryLimit = CodexPolicy.ServiceRetryLimit;
     private Process? process;
     private JsonRpcConnection? connection;
     private SubscriptionAccount? account;
@@ -27,10 +28,11 @@ public sealed class CodexAnswerProvider : IAnswerProvider
         this.options = options;
     }
 
-    internal CodexAnswerProvider(CodexLaunchOptions options, Func<CodexLaunchOptions, JsonRpcConnection> transportFactory)
+    internal CodexAnswerProvider(CodexLaunchOptions options, Func<CodexLaunchOptions, JsonRpcConnection> transportFactory, TimeSpan? serviceRetryLimit = null)
     {
         this.options = options;
         this.transportFactory = transportFactory;
+        this.serviceRetryLimit = serviceRetryLimit ?? CodexPolicy.ServiceRetryLimit;
     }
 
     public event Action? AccountChanged;
@@ -194,11 +196,25 @@ public sealed class CodexAnswerProvider : IAnswerProvider
         var terminal = new TaskCompletionSource<AnswerUpdateKind>(TaskCreationOptions.RunContinuationsAsynchronously);
         AnswerStreamReducer? reducer = null;
         JsonRpcConnection? rpc = null;
+        Timer? retryTimer = null;
+        AnswerUpdate? heldFailure = null;
 
         void Publish(AnswerUpdate? update)
         {
             if (update is null || terminal.Task.IsCompleted)
                 return;
+            if (update.Kind == AnswerUpdateKind.Retrying)
+                StartRetryTimer();
+            else if (update.Kind is not (AnswerUpdateKind.Status or AnswerUpdateKind.Model))
+                StopRetryTimer();
+            if (update.Kind == AnswerUpdateKind.Failed && reducer?.FailureKind == TurnErrorKind.SignIn)
+            {
+                // Hold the failure until the account check below decides whether
+                // the sign-in or the service is at fault.
+                heldFailure = update;
+                terminal.TrySetResult(AnswerUpdateKind.Failed);
+                return;
+            }
             if (update.Kind is AnswerUpdateKind.Text or AnswerUpdateKind.Completed)
                 timing?.MarkFirstText(update.Text);
             if (update.Kind == AnswerUpdateKind.Completed)
@@ -206,6 +222,30 @@ public sealed class CodexAnswerProvider : IAnswerProvider
             output.TryWrite(update);
             if (update.Kind is AnswerUpdateKind.Completed or AnswerUpdateKind.Failed or AnswerUpdateKind.Cancelled)
                 terminal.TrySetResult(update.Kind);
+        }
+
+        void StartRetryTimer()
+        {
+            lock (sync)
+            {
+                retryTimer ??= new Timer(_ =>
+                {
+                    lock (sync)
+                    {
+                        if (reducer is { IsRetrying: true })
+                            Publish(reducer.GiveUpRetrying());
+                    }
+                }, null, serviceRetryLimit, Timeout.InfiniteTimeSpan);
+            }
+        }
+
+        void StopRetryTimer()
+        {
+            lock (sync)
+            {
+                retryTimer?.Dispose();
+                retryTimer = null;
+            }
         }
 
         void OnNotification(string method, JsonElement parameters)
@@ -265,6 +305,10 @@ public sealed class CodexAnswerProvider : IAnswerProvider
             {
                 Publish(new(AnswerUpdateKind.Cancelled, "Answer stopped."));
             }
+            else if (heldFailure is not null)
+            {
+                output.TryWrite(await ConfirmSignInFailureAsync(rpc, heldFailure).ConfigureAwait(false));
+            }
 
         }
         catch (OperationCanceledException) when (linked.IsCancellationRequested)
@@ -277,6 +321,7 @@ public sealed class CodexAnswerProvider : IAnswerProvider
         }
         finally
         {
+            StopRetryTimer();
             if (rpc is not null)
             {
                 rpc.Notification -= OnNotification;
@@ -300,6 +345,28 @@ public sealed class CodexAnswerProvider : IAnswerProvider
             if (shouldReset)
                 await ResetProcessAsync().ConfigureAwait(false);
             output.TryComplete();
+        }
+    }
+
+    // Codex has already tried to recover the sign-in before reporting it as
+    // rejected. Refreshing the token once more separates a revoked sign-in from
+    // a backend fault that returns 401 for a valid account.
+    private static async Task<AnswerUpdate> ConfirmSignInFailureAsync(JsonRpcConnection rpc, AnswerUpdate serviceFailure)
+    {
+        var signInFailure = new AnswerUpdate(AnswerUpdateKind.Failed, AnswerStreamReducer.SignInStatus, AnswerStreamReducer.SignInDetail);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        try
+        {
+            var response = await rpc.RequestAsync("account/read", new { refreshToken = true }, timeout.Token).ConfigureAwait(false);
+            return CodexPolicy.ReadAccount(response).IsConnected ? serviceFailure : signInFailure;
+        }
+        catch (JsonRpcException)
+        {
+            return signInFailure;
+        }
+        catch
+        {
+            return serviceFailure;
         }
     }
 

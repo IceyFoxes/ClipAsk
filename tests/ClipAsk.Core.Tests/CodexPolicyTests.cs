@@ -14,6 +14,18 @@ public sealed class CodexPolicyTests
         Assert.Equal("free", account.Plan);
     }
 
+    [Theory]
+    [InlineData("""{"codexErrorInfo":"usageLimitExceeded"}""", TurnErrorKind.Allowance)]
+    [InlineData("""{"codexErrorInfo":"unauthorized"}""", TurnErrorKind.SignIn)]
+    [InlineData("""{"codexErrorInfo":"internalServerError"}""", TurnErrorKind.ServiceUnavailable)]
+    [InlineData("""{"codexErrorInfo":"serverOverloaded"}""", TurnErrorKind.ServiceUnavailable)]
+    [InlineData("""{"codexErrorInfo":{"responseStreamDisconnected":{"httpStatusCode":401}}}""", TurnErrorKind.ServiceUnavailable)]
+    [InlineData("""{"codexErrorInfo":{"httpConnectionFailed":{"httpStatusCode":null}}}""", TurnErrorKind.ServiceUnavailable)]
+    [InlineData("""{"codexErrorInfo":"contextWindowExceeded"}""", TurnErrorKind.Other)]
+    [InlineData("""{"message":"no code"}""", TurnErrorKind.Other)]
+    public void ClassifiesCodexTurnErrors(string error, TurnErrorKind expected) =>
+        Assert.Equal(expected, CodexPolicy.ClassifyTurnError(Json(error)));
+
     [Fact]
     public void DisconnectedAccountIsNotAnApiFallback()
     {

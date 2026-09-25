@@ -13,12 +13,25 @@ public sealed record CodexModelSelection(
 
 public sealed record SubscriptionAccount(bool IsConnected, string? Plan);
 
+public enum TurnErrorKind
+{
+    Other,
+    Allowance,
+    SignIn,
+    ServiceUnavailable
+}
+
 public static class CodexPolicy
 {
     public const string RuntimeVersion = "0.156.1";
     public const string PreferredModel = "gpt-6-luna";
     public const string PreferredReasoningEffort = "low";
     public const int MaximumImageBytes = 20 * 1024 * 1024;
+
+    // Codex retries dropped model connections on its own. Short blips recover
+    // within a few seconds; past this window ClipAsk stops the turn and reports
+    // a service problem instead of leaving the request hanging.
+    public static readonly TimeSpan ServiceRetryLimit = TimeSpan.FromSeconds(15);
 
     public static IReadOnlyList<string> StartupOverrides { get; } = Array.AsReadOnly<string>(
     [
@@ -89,6 +102,28 @@ public static class CodexPolicy
         (uri.Host.Equals("chatgpt.com", StringComparison.OrdinalIgnoreCase) ||
          uri.Host.Equals("openai.com", StringComparison.OrdinalIgnoreCase) ||
          uri.Host.EndsWith(".openai.com", StringComparison.OrdinalIgnoreCase));
+
+    // codexErrorInfo is either a bare variant name or an object keyed by it,
+    // such as {"responseStreamDisconnected":{"httpStatusCode":502}}.
+    public static TurnErrorKind ClassifyTurnError(JsonElement error)
+    {
+        if (error.ValueKind != JsonValueKind.Object || !error.TryGetProperty("codexErrorInfo", out var info))
+            return TurnErrorKind.Other;
+        var code = info.ValueKind switch
+        {
+            JsonValueKind.String => info.GetString(),
+            JsonValueKind.Object => info.EnumerateObject().Select(property => property.Name).FirstOrDefault(),
+            _ => null
+        };
+        return code switch
+        {
+            "usageLimitExceeded" or "rateLimitExceeded" or "sessionBudgetExceeded" => TurnErrorKind.Allowance,
+            "unauthorized" => TurnErrorKind.SignIn,
+            "httpConnectionFailed" or "responseStreamConnectionFailed" or "responseStreamDisconnected" or
+                "responseTooManyFailedAttempts" or "internalServerError" or "serverOverloaded" => TurnErrorKind.ServiceUnavailable,
+            _ => TurnErrorKind.Other
+        };
+    }
 
     public static SubscriptionAccount ReadAccount(JsonElement response)
     {

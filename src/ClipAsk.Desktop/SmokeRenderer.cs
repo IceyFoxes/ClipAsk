@@ -114,6 +114,24 @@ internal static class SmokeRenderer
         Save(resizedRender, Path.Combine(outputDirectory, "resizable-window.png"));
         resizableWindow.DismissForSmoke();
 
+        var serviceWindow = new ResultWindow();
+        serviceWindow.SetPreview(source, ResultLayoutCalculator.Calculate(new(800, 300, 1920, 1080)));
+        serviceWindow.SetAccount("ChatGPT · free", true);
+        serviceWindow.SetBusy(true);
+        serviceWindow.SetBusyNotice(AnswerStreamReducer.RetryingText);
+        Save(RenderWindow(serviceWindow), Path.Combine(outputDirectory, "service-retrying.png"));
+        serviceWindow.SetStatus(AnswerStreamReducer.ServiceUnavailableStatus);
+        serviceWindow.ShowFailure(AnswerStreamReducer.ServiceUnavailableDetail);
+        serviceWindow.SetBusy(false);
+        // Lay the window out once, as a shown window would be, before measuring the message.
+        _ = RenderWindow(serviceWindow);
+        serviceWindow.ShowFailure(AnswerStreamReducer.ServiceUnavailableDetail);
+        var serviceRender = RenderWindow(serviceWindow);
+        if (serviceWindow.IsCopyEnabled || serviceWindow.Answer.Length != 0 || serviceWindow.PrimaryActionVisibility != Visibility.Visible || serviceWindow.PrimaryActionText != "Try again")
+            throw new InvalidOperationException("The service failure did not offer Try again without a copyable answer.");
+        Save(serviceRender, Path.Combine(outputDirectory, "service-failure.png"));
+        serviceWindow.DismissForSmoke();
+
         window.SetAnswer(UnicodeAnswer, true);
         window.SetStatus("Demo - not an AI response");
         if (window.Answer != UnicodeAnswer)
