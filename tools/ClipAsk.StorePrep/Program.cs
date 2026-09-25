@@ -24,9 +24,15 @@ internal static partial class Program
                 GenerateManifest(args[1], args[2], args[3], args[4], args[5], args[6]);
                 return 0;
             }
+            if (args.Length == 6 && args[0].Equals("screenshots", StringComparison.OrdinalIgnoreCase))
+            {
+                GenerateScreenshots(args[1], args[2], args[3], args[4], args[5]);
+                return 0;
+            }
 
             Console.Error.WriteLine("usage: ClipAsk.StorePrep assets <source.png> <output-dir>");
             Console.Error.WriteLine("   or: ClipAsk.StorePrep manifest <template> <output> <identity-name> <publisher> <publisher-display-name> <version>");
+            Console.Error.WriteLine("   or: ClipAsk.StorePrep screenshots <prompt.png> <answer.png> <formatted.png> <options.png> <output-dir>");
             return 2;
         }
         catch (Exception exception)
@@ -42,8 +48,22 @@ internal static partial class Program
         Directory.CreateDirectory(outputDirectory);
         SaveAsset(source, Path.Combine(outputDirectory, "StoreLogo.png"), 50, 50, 50);
         SaveAsset(source, Path.Combine(outputDirectory, "Square44x44Logo.png"), 44, 44, 44);
+        foreach (var scale in new[] { 100, 200, 400 })
+        {
+            var appListSize = 44 * scale / 100;
+            SaveAsset(source, Path.Combine(outputDirectory, $"Square44x44Logo.scale-{scale}.png"), appListSize, appListSize, appListSize);
+            var tileSize = 150 * scale / 100;
+            SaveAsset(source, Path.Combine(outputDirectory, $"Square150x150Logo.scale-{scale}.png"), tileSize, tileSize, tileSize);
+        }
+        foreach (var size in new[] { 16, 20, 24, 30, 32, 36, 40, 48, 60, 64, 72, 80, 96, 256 })
+        {
+            SaveAsset(source, Path.Combine(outputDirectory, $"Square44x44Logo.targetsize-{size}.png"), size, size, size);
+            SaveAsset(source, Path.Combine(outputDirectory, $"Square44x44Logo.targetsize-{size}_altform-unplated.png"), size, size, size);
+            SaveAsset(source, Path.Combine(outputDirectory, $"Square44x44Logo.targetsize-{size}_altform-lightunplated.png"), size, size, size);
+        }
         SaveAsset(source, Path.Combine(outputDirectory, "Square71x71Logo.png"), 71, 71, 71);
         SaveAsset(source, Path.Combine(outputDirectory, "Square150x150Logo.png"), 150, 150, 150);
+        SaveAsset(source, Path.Combine(outputDirectory, "StoreTile300x300.png"), 300, 300, 300);
         SaveAsset(source, Path.Combine(outputDirectory, "Wide310x150Logo.png"), 310, 150, 132);
         SaveAsset(source, Path.Combine(outputDirectory, "Square310x310Logo.png"), 310, 310, 310);
         Console.WriteLine($"Generated Microsoft Store assets in {Path.GetFullPath(outputDirectory)}");
@@ -72,6 +92,57 @@ internal static partial class Program
             drawing.DrawImage(source, new Rect(left, top, iconSize, iconSize));
         }
         var render = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+        render.Render(visual);
+        render.Freeze();
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(render));
+        using var output = File.Create(path);
+        encoder.Save(output);
+    }
+
+    private static void GenerateScreenshots(string promptPath, string answerPath, string formattedPath, string optionsPath, string outputDirectory)
+    {
+        Directory.CreateDirectory(outputDirectory);
+        SaveStoreScreenshot(promptPath, Path.Combine(outputDirectory, "01-ask-about-a-capture.png"), cropTaskbar: true);
+        SaveStoreScreenshot(answerPath, Path.Combine(outputDirectory, "02-read-the-answer.png"), cropTaskbar: true);
+        SaveStoreScreenshot(formattedPath, Path.Combine(outputDirectory, "03-formatted-answer.png"), cropTaskbar: false);
+        SaveOptionsScreenshot(optionsPath, Path.Combine(outputDirectory, "04-response-options.png"));
+        Console.WriteLine($"Generated four Microsoft Store screenshots in {Path.GetFullPath(outputDirectory)}");
+    }
+
+    private static void SaveStoreScreenshot(string sourcePath, string outputPath, bool cropTaskbar)
+    {
+        var source = LoadBitmap(sourcePath);
+        // The recorded Windows capture includes a 48-pixel taskbar. Remove it and
+        // center-crop the remaining scene to 16:9 without stretching the app UI.
+        var usableHeight = source.PixelHeight - (cropTaskbar ? 48 : 0);
+        var cropWidth = Math.Min(source.PixelWidth, usableHeight * 16 / 9);
+        var cropHeight = Math.Min(usableHeight, source.PixelWidth * 9 / 16);
+        var cropped = new CroppedBitmap(source, new System.Windows.Int32Rect(
+            (source.PixelWidth - cropWidth) / 2, (usableHeight - cropHeight) / 2,
+            cropWidth, cropHeight));
+        SaveScreenshotVisual(outputPath, drawing => drawing.DrawImage(cropped, new Rect(0, 0, 1920, 1080)));
+    }
+
+    private static void SaveOptionsScreenshot(string sourcePath, string outputPath)
+    {
+        var source = LoadBitmap(sourcePath);
+        SaveScreenshotVisual(outputPath, drawing =>
+        {
+            drawing.DrawRectangle(new SolidColorBrush(Color.FromRgb(24, 27, 32)), null, new Rect(0, 0, 1920, 1080));
+            var scale = Math.Min(1.65, Math.Min(1500d / source.PixelWidth, 900d / source.PixelHeight));
+            var width = source.PixelWidth * scale;
+            var height = source.PixelHeight * scale;
+            drawing.DrawImage(source, new Rect((1920 - width) / 2, (1080 - height) / 2, width, height));
+        });
+    }
+
+    private static void SaveScreenshotVisual(string path, Action<DrawingContext> draw)
+    {
+        var visual = new DrawingVisual();
+        using (var drawing = visual.RenderOpen())
+            draw(drawing);
+        var render = new RenderTargetBitmap(1920, 1080, 96, 96, PixelFormats.Pbgra32);
         render.Render(visual);
         render.Freeze();
         var encoder = new PngBitmapEncoder();

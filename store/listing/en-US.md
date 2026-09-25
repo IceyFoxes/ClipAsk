@@ -10,37 +10,38 @@ Productivity
 
 ## Short description
 
-Select part of your screen, add an optional instruction, and get a focused ChatGPT answer.
+Paste the plain text in [short-description-en-US.txt](short-description-en-US.txt). It is the longer caption shown near the top of the listing.
 
 ## Description
 
-ClipAsk is a focused screenshot-to-answer utility for Windows.
+Paste only the plain text in [description-en-US.txt](description-en-US.txt). Partner Center treats this field as plain text: Markdown headings, links, and bullet syntax appear literally. Keep website, support, and privacy URLs in their dedicated fields.
 
-Press Ctrl+Alt+S, select a region, and ask ChatGPT about exactly what you captured. Left-drag lets you add an instruction before sending. Right-drag asks immediately. Responses stream into a compact floating window with Markdown, tables, code blocks, and LaTeX rendering.
+## Screenshots
 
-ClipAsk supports model and reasoning-effort choices advertised by your ChatGPT account, proportional screenshot scaling, resizable results, clipboard copy, optional PNG saving, taskbar minimization, and startup support.
+Upload the PNGs in [screenshots](screenshots) in numeric order. They are 1920 × 1080 and contain no taskbar or added marketing text. The first two are cropped from a real capture-and-answer session; the third is a WPF-rendered formatting sample; the fourth shows the current response-options dialog. Suggested optional captions, entered in Partner Center rather than burned into the images:
 
-Your capture stays local until you complete an explicit capture-and-answer action. ClipAsk uses the official managed ChatGPT browser sign-in and does not ask for an API key or store your password.
-
-ClipAsk is free and open-source under GPL-3.0-only. ChatGPT availability, models, and usage limits depend on your account. ClipAsk is independent software and is not affiliated with or endorsed by OpenAI.
+1. Select a chart and add a question before sending.
+2. Read an answer next to the content you captured.
+3. Follow structured answers with lists and mathematical notation.
+4. Choose a model, reasoning effort, optional Fast mode, and a default instruction.
 
 ## Features
 
 - Global Ctrl+Alt+S capture shortcut
 - Prompted or immediate screenshot questions
 - Streaming Markdown, code, tables, and LaTeX
-- Resizable, always-available result window
-- Account-advertised model and reasoning controls
+- Resizable result window that can be minimized
+- Account-advertised model and reasoning controls, plus optional Fast mode
 - Copy responses and save captures as PNG
 - Managed ChatGPT browser sign-in with Windows credential storage
 - No API key required
 
 ## What's new
 
-- Added proportional result-window resizing.
-- Made left-drag the prompted flow and right-drag the immediate flow.
-- Centered initial windows and first-run guidance.
-- Fixed excess spacing during prompt and streaming resize transitions.
+- Updated the bundled Codex runtime.
+- Added optional Fast mode and made Luna with low reasoning the Automatic preference when available.
+- Improved the taskbar icon and Store screenshots.
+- Kept the result window at normal window level so other apps can cover it.
 
 ## URLs
 

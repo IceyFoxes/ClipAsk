@@ -1,0 +1,7 @@
+See something on screen you want to understand? ClipAsk makes it easy to capture exactly that part and ask ChatGPT about it. Use the Ctrl+Alt+S shortcut, drag over a chart, diagram, paragraph, or error message, and see the answer beside your work.
+
+Left-drag opens a place to add your own instruction before sending. Right-drag asks immediately. The answer streams into a resizable window that supports formatted text, tables, code blocks, and math. You can copy the answer, copy the image, or save the capture as a PNG.
+
+ClipAsk is free and open source. It connects through the official ChatGPT browser sign-in, and you can choose an eligible model and reasoning level advertised by your account. Fast mode is optional. A capture stays on your device until you complete a capture-and-answer action.
+
+A ChatGPT account with Codex access is required for answers. Available models and usage limits depend on your account. ClipAsk is independent software and is not affiliated with or endorsed by OpenAI.

@@ -80,6 +80,36 @@ if [[ -z "$makeappx_path" || ! -x "$makeappx_path" ]]; then
   exit 1
 fi
 
+# Target-size and unplated icon variants are selected through the package
+# resource index. MakeAppx does not build that index for a manual MSIX layout.
+makepri_path="${MAKEPRI:-$(dirname "$makeappx_path")/makepri.exe}"
+if [[ ! -x "$makepri_path" ]]; then
+  printf 'package-store: MakePri.exe was not found beside MakeAppx.exe; set MAKEPRI\n' >&2
+  exit 1
+fi
+# MakePri can silently skip files while enumerating a \\wsl.localhost share
+# (it dropped targetsize-30_altform-unplated, which 125% displays use), so index
+# a copy of the manifest and assets on a Windows drive.
+windows_temp="$(cd /mnt/c && /mnt/c/Windows/System32/cmd.exe /d /c 'echo %TEMP%' 2>/dev/null | tr -d '\r' | tail -1)"
+pri_root="$(mktemp -d "$(wslpath -u "$windows_temp")/clipask-pri.XXXXXX")"
+trap 'rm -rf "$pri_root"' EXIT
+mkdir -p "$pri_root/project"
+cp -a "$layout_dir/AppxManifest.xml" "$layout_dir/Assets" "$pri_root/project/"
+"$makepri_path" createconfig /cf "$(wslpath -w "$pri_root/priconfig.xml")" /dq en-US /o >/dev/null
+# A single MSIX has no resource packages, so keep every scale in resources.pri.
+sed -i '/<packaging>/,/<\/packaging>/d' "$pri_root/priconfig.xml"
+"$makepri_path" new /pr "$(wslpath -w "$pri_root/project")" /cf "$(wslpath -w "$pri_root/priconfig.xml")" \
+  /of "$(wslpath -w "$pri_root/resources.pri")" /o >/dev/null
+"$makepri_path" dump /if "$(wslpath -w "$pri_root/resources.pri")" \
+  /of "$(wslpath -w "$pri_root/resources.xml")" /o /dt detailed >/dev/null
+for asset in "$layout_dir"/Assets/*.png; do
+  grep -qF "<Value>Assets\\$(basename "$asset")</Value>" "$pri_root/resources.xml" || {
+    printf 'package-store: resources.pri is missing Assets/%s\n' "$(basename "$asset")" >&2
+    exit 1
+  }
+done
+cp "$pri_root/resources.pri" "$layout_dir/resources.pri"
+
 rm -f "$package_path" "$package_path.sha256"
 makeappx_log="$store_root/makeappx.log"
 if ! "$makeappx_path" pack /d "$(wslpath -w "$layout_dir")" /p "$(wslpath -w "$package_path")" /o >"$makeappx_log" 2>&1; then
@@ -94,4 +124,8 @@ tail -n 1 "$makeappx_log"
 
 printf 'Created %s\n' "$package_path"
 printf 'SHA-256: %s\n' "$(cut -d ' ' -f 1 "$package_path.sha256")"
-printf 'This MSIX is unsigned for Store submission and is not intended for direct sideloading.\n'
+if [[ "$CLIPASK_STORE_PUBLISHER" == *'OID.2.25.311729368913984317654407730594956997722=1'* ]]; then
+  printf 'Unsigned Windows 11 local test package: install from elevated PowerShell with Add-AppxPackage -AllowUnsigned.\n'
+else
+  printf 'This MSIX is unsigned for Store submission and is not intended for direct sideloading.\n'
+fi

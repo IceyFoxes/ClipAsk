@@ -1,0 +1,1 @@
+ClipAsk lets you select anything on your screen and ask ChatGPT about it. Capture a chart, diagram, paragraph, or error message, add an optional instruction, and get a focused answer in a compact window without switching apps.

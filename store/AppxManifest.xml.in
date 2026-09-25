@@ -34,7 +34,7 @@
         AppListEntry="default"
         DisplayName="ClipAsk"
         Description="Clip a region of your screen and ask ChatGPT."
-        BackgroundColor="#181B20"
+        BackgroundColor="transparent"
         Square44x44Logo="Assets\Square44x44Logo.png"
         Square150x150Logo="Assets\Square150x150Logo.png">
         <uap:DefaultTile
