@@ -7,6 +7,7 @@
 <p align="center"><strong>Clip your screen. Ask ChatGPT.</strong></p>
 
 <p align="center">
+  <a href="https://apps.microsoft.com/detail/9P4RK9WV82LR"><img src="https://img.shields.io/badge/Microsoft_Store-Get_ClipAsk-0078D4" alt="Get ClipAsk from Microsoft Store" /></a>
   <a href="https://github.com/IceyFoxes/ClipAsk/releases"><img src="https://img.shields.io/github/v/release/IceyFoxes/ClipAsk?include_prereleases&amp;label=release" alt="Latest GitHub release" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--only-6e72ff" alt="GPL-3.0-only license" /></a>
 </p>
@@ -21,7 +22,7 @@ ClipAsk is a free, open-source Windows utility for asking ChatGPT about a select
 
 ## Install
 
-Download [ClipAsk 0.1.0 Beta 5](https://github.com/IceyFoxes/ClipAsk/releases/tag/v0.1.0-beta.5). The installer is the easiest option; the ZIP is a portable alternative.
+Get ClipAsk from the [Microsoft Store](https://apps.microsoft.com/detail/9P4RK9WV82LR). For a standalone installer or portable ZIP, download [ClipAsk 0.1.0 Beta 5 from GitHub](https://github.com/IceyFoxes/ClipAsk/releases/tag/v0.1.0-beta.5).
 
 - Windows 10 or 11 on x64
 - A ChatGPT account with Codex access
@@ -29,7 +30,7 @@ Download [ClipAsk 0.1.0 Beta 5](https://github.com/IceyFoxes/ClipAsk/releases/ta
 
 The installer and portable ZIP include the required .NET and Codex runtime files. You do not need to install either separately. The installer is per-user and does not require administrator access.
 
-The current beta is unsigned, so Windows SmartScreen may show an unknown-publisher warning. Verify the adjacent SHA-256 checksum before running it. GitHub builds do not update automatically. A Microsoft Store release is being prepared.
+The GitHub beta installer is unsigned, so Windows SmartScreen may show an unknown-publisher warning. Verify the adjacent SHA-256 checksum before running it. GitHub builds do not update automatically.
 
 ## Use
 
