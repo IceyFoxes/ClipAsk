@@ -3,6 +3,7 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <ImplicitUsings>disable</ImplicitUsings>
     <OutputType>WinExe</OutputType>
     <AssemblyName>ClipAsk</AssemblyName>

@@ -50,7 +50,7 @@ Every valid capture is copied to the Windows clipboard. Answers stream into a re
 
 - Capture a region from any visible desktop application.
 - Add a one-time instruction or ask immediately.
-- Choose from eligible models and reasoning levels advertised by your account.
+- Choose from eligible models and reasoning levels advertised by your account, with an optional Fast mode.
 - Copy answers or captures, and save captures as PNG files.
 - Keep ClipAsk available through the system tray and optionally start it with Windows.
 - View available account usage details from the menu.
@@ -67,7 +67,7 @@ See [Privacy](PRIVACY.md) for details about local state, the clipboard, saved fi
 
 ## Build on Windows
 
-Development requires Windows, the .NET **10.0.401 SDK** specified in `global.json`, Git, and the official native Windows **Codex CLI 0.151.0** executable. Download the matching Windows architecture from the [official Codex release](https://github.com/openai/codex/releases/tag/rust-v0.151.0). Do not use an unverified third-party binary.
+Development requires Windows, the .NET **10.0.401 SDK** specified in `global.json`, Git, and the official native Windows **Codex CLI 0.156.1** executable. Download the matching Windows architecture from the [official Codex release](https://github.com/openai/codex/releases/tag/rust-v0.156.1). Do not use an unverified third-party binary.
 
 ```powershell
 git clone https://github.com/IceyFoxes/ClipAsk.git

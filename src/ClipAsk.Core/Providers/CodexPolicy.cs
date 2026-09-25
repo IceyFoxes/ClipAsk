@@ -15,8 +15,8 @@ public sealed record SubscriptionAccount(bool IsConnected, string? Plan);
 
 public static class CodexPolicy
 {
-    public const string RuntimeVersion = "0.151.0";
-    public const string PreferredModel = "gpt-5.6-terra";
+    public const string RuntimeVersion = "0.156.1";
+    public const string PreferredModel = "gpt-6-luna";
     public const string PreferredReasoningEffort = "low";
     public const int MaximumImageBytes = 20 * 1024 * 1024;
 
@@ -251,7 +251,7 @@ public static class CodexPolicy
         options.ValueKind == JsonValueKind.Array &&
         options.EnumerateArray().Any(option => option.GetProperty("reasoningEffort").GetString() == effort);
 
-    public static JsonElement ThreadParameters(string workspace, CodexModelSelection model) =>
+    public static JsonElement ThreadParameters(string workspace, CodexModelSelection model, bool fastMode = false) =>
         JsonSerializer.SerializeToElement(new
         {
             cwd = workspace,
@@ -262,10 +262,15 @@ public static class CodexPolicy
             baseInstructions = AnswerPrompt.Instructions,
             personality = "none",
             ephemeral = true,
-            serviceTier = "default"
+            serviceTier = fastMode ? "priority" : "default"
         });
 
-    public static JsonElement TurnParameters(string threadId, ReadOnlyMemory<byte> png, CodexModelSelection model, string? instruction = null)
+    public static JsonElement TurnParameters(
+        string threadId,
+        ReadOnlyMemory<byte> png,
+        CodexModelSelection model,
+        string? instruction = null,
+        bool fastMode = false)
     {
         ReadOnlySpan<byte> signature = [137, 80, 78, 71, 13, 10, 26, 10];
         if (png.Length > MaximumImageBytes || !png.Span.StartsWith(signature))
@@ -284,7 +289,7 @@ public static class CodexPolicy
             summary = "none",
             approvalPolicy = "never",
             sandboxPolicy = new { type = "readOnly", networkAccess = false },
-            serviceTierForTurn = "default"
+            serviceTierForTurn = fastMode ? "priority" : "default"
         });
     }
 }

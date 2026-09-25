@@ -11,7 +11,7 @@ BUILD_INSTALLER="${BUILD_INSTALLER:-0}"
 PROJECT="$ROOT/src/ClipAsk.Desktop/ClipAsk.Desktop.csproj"
 DOTNET="${DOTNET:-$ROOT/.devin/tools/dotnet-win/dotnet.exe}"
 CODEX_ROOT="${CLIPASK_CODEX_ROOT:-$ROOT/.devin/tools/codex-win}"
-CODEX_MANIFEST="$ROOT/eng/codex-win-x64-0.151.0.sha256"
+CODEX_MANIFEST="$ROOT/eng/codex-win-x64-0.156.1.sha256"
 VERSION="$(sed -n 's|.*<Version>\([^<]*\)</Version>.*|\1|p' "$PROJECT" | head -1)"
 CODEX_VERSION="$(sed -n 's|.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*|\1|p' "$CODEX_ROOT/codex-package.json" | head -1)"
 PUBLISH_DIR="$ROOT/artifacts/publish/ClipAsk-$VERSION-$RUNTIME"
@@ -27,7 +27,7 @@ fail() {
 [[ -x "$DOTNET" ]] || fail "dotnet was not found at $DOTNET (set DOTNET to override)"
 [[ -f "$CODEX_ROOT/codex.exe" ]] || fail "the pinned Codex runtime is missing at $CODEX_ROOT"
 [[ -f "$CODEX_MANIFEST" ]] || fail "the pinned Codex hash manifest is missing"
-[[ "$CODEX_VERSION" == "0.151.0" ]] || fail "expected Codex 0.151.0, found ${CODEX_VERSION:-unknown}"
+[[ "$CODEX_VERSION" == "0.156.1" ]] || fail "expected Codex 0.156.1, found ${CODEX_VERSION:-unknown}"
 
 TRACKED_STATUS="$(git -C "$ROOT" status --porcelain --untracked-files=no)"
 if [[ "$ALLOW_DIRTY" != "1" ]] && [[ -n "$TRACKED_STATUS" ]]; then
@@ -68,13 +68,21 @@ mkdir -p "$DOTNET_CLI_HOME" "$NUGET_PACKAGES"
   -p:PublishProfile=win-x64 \
   -p:PublishDir="$(wslpath -w "$PUBLISH_DIR")\\"
 
-cp -a "$CODEX_ROOT/." "$PUBLISH_DIR/"
+# ClipAsk uses Codex only through app-server. Its code-mode, voice, sandbox,
+# command-runner, and ripgrep helpers are not invoked by the locked-down policy.
+cp "$CODEX_ROOT/codex.exe" "$CODEX_ROOT/codex-package.json" "$PUBLISH_DIR/"
 mkdir -p "$PUBLISH_DIR/licenses"
 cp "$ROOT/.devin/tools/dotnet-win/LICENSE.txt" "$PUBLISH_DIR/licenses/Microsoft-dotnet-LICENSE.txt"
 cp "$ROOT/.devin/tools/dotnet-win/ThirdPartyNotices.txt" "$PUBLISH_DIR/licenses/Microsoft-dotnet-ThirdPartyNotices.txt"
 find "$PUBLISH_DIR" -type f -name '*.pdb' -delete
 
-CODEX_OUTPUT="$("$PUBLISH_DIR/codex.exe" --version | tr -d '\r')"
+CODEX_OUTPUT=""
+for _ in 1 2 3 4 5; do
+  if CODEX_OUTPUT="$("$PUBLISH_DIR/codex.exe" --version 2>/dev/null | tr -d '\r')" && [[ -n "$CODEX_OUTPUT" ]]; then
+    break
+  fi
+  sleep 2
+done
 [[ "$CODEX_OUTPUT" == "codex-cli $CODEX_VERSION" ]] || fail "bundled Codex reported '$CODEX_OUTPUT'"
 
 COMMIT="$(git -C "$ROOT" rev-parse HEAD)"

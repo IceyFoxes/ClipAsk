@@ -18,7 +18,8 @@ internal partial class AnswerOptionsWindow : Window
         string? selectedModel,
         string? selectedReasoningEffort,
         CodexModelSelection? automaticModel,
-        IReadOnlyList<CodexModelSelection> models)
+        IReadOnlyList<CodexModelSelection> models,
+        bool fastMode)
     {
         InitializeComponent();
         this.automaticModel = automaticModel;
@@ -35,9 +36,10 @@ internal partial class AnswerOptionsWindow : Window
         ModelHelpText.Text = automaticModel is null
             ? "Automatic resolves against the image-capable models advertised by your ChatGPT account."
             : automaticModel.Model == CodexPolicy.PreferredModel && automaticModel.ReasoningEffort == CodexPolicy.PreferredReasoningEffort
-                ? "Automatic prefers GPT-5.6 Terra with low reasoning when your account advertises it for images; otherwise it uses the advertised default."
-                : "GPT-5.6 Terra with low reasoning is not eligible on this account, so Automatic uses the advertised image-capable default.";
+                ? "Automatic prefers GPT-6 Luna with low reasoning when your account advertises it for images; otherwise it uses the advertised default."
+                : "GPT-6 Luna with low reasoning is not eligible on this account, so Automatic uses the advertised image-capable default.";
         RefreshEffortChoices();
+        FastModeBox.IsChecked = fastMode;
         InstructionBox.Text = instruction;
         SourceInitialized += (_, _) => NativeMethods.EnableRoundedCorners(this);
         Loaded += (_, _) => InstructionBox.Focus();
@@ -46,6 +48,7 @@ internal partial class AnswerOptionsWindow : Window
     public string Instruction => InstructionBox.Text.Trim();
     public string? SelectedModel => (ModelBox.SelectedItem as ModelChoice)?.Model;
     public string? SelectedReasoningEffort => (EffortBox.SelectedItem as EffortChoice)?.Effort;
+    public bool FastMode => FastModeBox.IsChecked == true;
 
     private void ModelSelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) => RefreshEffortChoices();
 

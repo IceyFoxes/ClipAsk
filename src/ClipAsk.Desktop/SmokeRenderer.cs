@@ -206,13 +206,14 @@ internal static class SmokeRenderer
 
         var options = new AnswerOptionsWindow(
             "Explain the chart in plain English and calculate the break-even price.",
-            "gpt-5.6-luna",
+            "gpt-6-luna",
             "low",
-            new CodexModelSelection("gpt-5.6-terra", "low", "GPT-5.6 Terra"),
+            new CodexModelSelection("gpt-6-luna", "low", "GPT-6 Luna"),
             [
                 new CodexModelSelection("gpt-5.6-terra", "low", "GPT-5.6 Terra", ["low", "medium", "high"]),
-                new CodexModelSelection("gpt-5.6-luna", "low", "GPT-5.6 Luna", ["low", "medium", "high"])
-            ]);
+                new CodexModelSelection("gpt-6-luna", "low", "GPT-6 Luna", ["low", "medium", "high"])
+            ],
+            false);
         Save(RenderWindow(options), Path.Combine(outputDirectory, "answer-options.png"));
 
         var firstRun = new FirstRunWindow();

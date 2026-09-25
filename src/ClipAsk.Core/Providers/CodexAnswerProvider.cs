@@ -234,13 +234,14 @@ public sealed class CodexAnswerProvider : IAnswerProvider
             if (!connected.IsConnected)
                 throw new InvalidOperationException("Connect a ChatGPT account before analyzing a selection.");
             var selectedModel = await GetModelAsync(rpc, options.Model, options.ReasoningEffort, linked.Token).ConfigureAwait(false);
-            Publish(new(AnswerUpdateKind.Model, $"{selectedModel.DisplayName} · {selectedModel.ReasoningEffort}"));
-            var threadResponse = await rpc.RequestAsync("thread/start", CodexPolicy.ThreadParameters(GetWorkspace(), selectedModel), linked.Token).ConfigureAwait(false);
+            var speedLabel = options.FastMode ? " · Fast" : string.Empty;
+            Publish(new(AnswerUpdateKind.Model, $"{selectedModel.DisplayName} · {selectedModel.ReasoningEffort}{speedLabel}"));
+            var threadResponse = await rpc.RequestAsync("thread/start", CodexPolicy.ThreadParameters(GetWorkspace(), selectedModel, options.FastMode), linked.Token).ConfigureAwait(false);
             threadId = ReadId(threadResponse, "threadId", "thread") ?? throw new InvalidOperationException("Codex did not return a thread identifier.");
 
             rpc.Notification += OnNotification;
             rpc.UnsupportedRequest += OnUnsupportedRequest;
-            var turnParameters = CodexPolicy.TurnParameters(threadId, png, selectedModel, options.Instruction);
+            var turnParameters = CodexPolicy.TurnParameters(threadId, png, selectedModel, options.Instruction, options.FastMode);
             turnRequestSent = true;
             var turnResponse = await rpc.RequestAsync("turn/start", turnParameters, linked.Token).ConfigureAwait(false);
             turnId = ReadId(turnResponse, "turnId", "turn") ?? throw new InvalidOperationException("Codex did not return a turn identifier.");

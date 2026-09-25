@@ -52,6 +52,7 @@ public partial class App : System.Windows.Application
     private bool currentInstructionUsesDefault = true;
     private string? selectedModel;
     private string? selectedReasoningEffort;
+    private bool fastMode;
     private bool connected;
     private bool launchInBackground;
     private bool startupEnabled;
@@ -526,7 +527,7 @@ public partial class App : System.Windows.Application
         previous?.Cancel();
         try
         {
-            var options = new AnswerRequestOptions(instruction, selectedModel, selectedReasoningEffort);
+            var options = new AnswerRequestOptions(instruction, selectedModel, selectedReasoningEffort, fastMode);
             await foreach (var update in provider!.AnswerAsync(currentPng!, options, localCancellation.Token, requestTiming).ConfigureAwait(true))
             {
                 if (!generation.IsCurrent(requestGeneration))
@@ -615,7 +616,7 @@ public partial class App : System.Windows.Application
             }
         }
 
-        var dialog = new AnswerOptionsWindow(answerInstruction, selectedModel, selectedReasoningEffort, automaticModel, models) { Owner = result };
+        var dialog = new AnswerOptionsWindow(answerInstruction, selectedModel, selectedReasoningEffort, automaticModel, models, fastMode) { Owner = result };
         if (dialog.ShowDialog() != true)
             return;
         answerInstruction = dialog.Instruction;
@@ -623,12 +624,14 @@ public partial class App : System.Windows.Application
             currentInstruction = answerInstruction;
         selectedModel = dialog.SelectedModel;
         selectedReasoningEffort = dialog.SelectedReasoningEffort;
+        fastMode = dialog.FastMode;
         var selected = models.FirstOrDefault(model => model.Model == selectedModel) ?? automaticModel;
         var effectiveEffort = selectedReasoningEffort ?? selected?.ReasoningEffort;
         var modelLabel = selectedModel is null
             ? automaticModel is null ? "Automatic (resolved per capture)" : $"Automatic → {automaticModel.DisplayName}"
             : selected?.DisplayName ?? selectedModel;
-        result.SetModel(effectiveEffort is null ? modelLabel : $"{modelLabel} · {effectiveEffort}");
+        var modelSummary = effectiveEffort is null ? modelLabel : $"{modelLabel} · {effectiveEffort}";
+        result.SetModel(fastMode ? $"{modelSummary} · Fast" : modelSummary);
         result.SetStatus("Response options updated");
     }
 

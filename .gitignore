@@ -13,3 +13,6 @@
 *.cer
 artifacts/
 TestResults/
+
+# Raw demo recordings; the README uses the GIF.
+docs/assets/*.mp4

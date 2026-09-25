@@ -13,7 +13,7 @@ This checklist records what release packaging validates and which manual coverag
 ## Remaining release work
 
 - [x] Add reproducible self-contained win-x64 ZIP packaging with the matching pinned Codex runtime.
-- [x] Audit every executable, library, font, and runtime asset in the first-beta publish output. The audited set is ClipAsk, Markdig, WpfMath/XamlMath and its fonts, the pinned Codex/ripgrep/PCRE2 tree, and the self-contained .NET Desktop Runtime; matching license and notice material is included.
+- [x] Audit every executable, library, font, and runtime asset in the first-beta publish output. The audited set is ClipAsk, Markdig, WpfMath/XamlMath and its fonts, the pinned Codex runtime (the executable only since 0.156.1; ripgrep/PCRE2 and other helpers are no longer shipped), and the self-contained .NET Desktop Runtime; matching license and notice material is included.
 - [x] Include GPL license text, build metadata, source URL, and a corresponding-source archive pinned to the packaged commit.
 - [x] Add About/license access from the window and tray menus.
 - [x] Apply the final application icon to the executable, windows, tray, installer, and repository branding.
