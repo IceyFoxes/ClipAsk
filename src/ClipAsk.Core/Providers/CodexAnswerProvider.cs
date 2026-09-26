@@ -14,6 +14,7 @@ public sealed class CodexAnswerProvider : IAnswerProvider
     private readonly SemaphoreSlim answerGate = new(1, 1);
     private readonly TimeSpan serviceRetryLimit = CodexPolicy.ServiceRetryLimit;
     private Process? process;
+    private CodexProcessPlan? processPlan;
     private JsonRpcConnection? connection;
     private SubscriptionAccount? account;
     private CodexModelSelection? model;
@@ -437,7 +438,9 @@ public sealed class CodexAnswerProvider : IAnswerProvider
             var version = await ReadVersionAsync(plan, cancellationToken).ConfigureAwait(false);
             if (!CodexProcessVersion.IsCompatible(version))
                 throw new InvalidOperationException($"Incompatible Codex runtime. Expected {CodexProcessVersion.Expected}.");
+            plan.DeleteSessionDatabases();
             var startInfo = plan.CreateStartInfo();
+            processPlan = plan;
             process = new() { StartInfo = startInfo, EnableRaisingEvents = true };
             if (!process.Start())
                 throw new InvalidOperationException("The native Codex process could not be started.");
@@ -580,6 +583,7 @@ public sealed class CodexAnswerProvider : IAnswerProvider
             {
             }
             oldProcess.Dispose();
+            processPlan?.DeleteSessionDatabasesAfterExit();
         }
         if (oldConnection is not null)
             await oldConnection.DisposeAsync().ConfigureAwait(false);
@@ -626,6 +630,7 @@ public sealed class CodexAnswerProvider : IAnswerProvider
         catch
         {
         }
+        processPlan?.DeleteSessionDatabasesAfterExit();
     }
 
     public async ValueTask DisposeAsync()
