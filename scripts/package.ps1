@@ -11,13 +11,13 @@ $root = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $root 'src\ClipAsk.Desktop\ClipAsk.Desktop.csproj'
 $dotnet = if ($env:DOTNET) { $env:DOTNET } else { Join-Path $root '.devin\tools\dotnet-win\dotnet.exe' }
 $codexRoot = if ($env:CLIPASK_CODEX_ROOT) { $env:CLIPASK_CODEX_ROOT } else { Join-Path $root '.devin\tools\codex-win' }
-$codexManifest = Join-Path $root 'eng\codex-win-x64-0.156.1.sha256'
+$codexManifest = Join-Path $root 'eng\codex-win-x64-0.160.0.sha256'
 
 [xml]$projectXml = Get-Content -Raw $project
 $version = [string]$projectXml.Project.PropertyGroup.Version
 $codexPackage = Get-Content -Raw (Join-Path $codexRoot 'codex-package.json') | ConvertFrom-Json
 if ($Runtime -ne 'win-x64') { throw 'Only win-x64 is currently supported.' }
-if ($codexPackage.version -ne '0.156.1') { throw "Expected Codex 0.156.1, found $($codexPackage.version)." }
+if ($codexPackage.version -ne '0.160.0') { throw "Expected Codex 0.160.0, found $($codexPackage.version)." }
 if (-not (Test-Path $dotnet)) { throw "dotnet was not found at $dotnet. Set DOTNET to override." }
 if (-not (Test-Path (Join-Path $codexRoot 'codex.exe'))) { throw "The pinned Codex runtime is missing at $codexRoot." }
 if (-not (Test-Path $codexManifest)) { throw 'The pinned Codex hash manifest is missing.' }

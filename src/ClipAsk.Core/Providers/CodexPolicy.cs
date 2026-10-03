@@ -23,7 +23,7 @@ public enum TurnErrorKind
 
 public static class CodexPolicy
 {
-    public const string RuntimeVersion = "0.156.1";
+    public const string RuntimeVersion = "0.160.0";
     public const string PreferredModel = "gpt-6-luna";
     public const string PreferredReasoningEffort = "low";
     public const int MaximumImageBytes = 20 * 1024 * 1024;

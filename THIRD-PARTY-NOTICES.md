@@ -7,7 +7,7 @@ ClipAsk's GPL-3.0-only license covers its own code. Dependencies retain their li
 | Markdig | 1.3.2 | BSD-2-Clause | https://github.com/xoofx/markdig |
 | WpfMath | 2.1.0 | MIT AND OFL-1.1 | https://github.com/ForNeVeR/xaml-math |
 | XamlMath.Shared | 2.1.0 | MIT | https://github.com/ForNeVeR/xaml-math |
-| OpenAI Codex CLI | 0.156.1 | Apache-2.0 | https://github.com/openai/codex/tree/rust-v0.156.1 |
+| OpenAI Codex CLI | 0.160.0 | Apache-2.0 | https://github.com/openai/codex/tree/rust-v0.160.0 |
 | Microsoft .NET Desktop Runtime | 10.0.12 | Microsoft .NET Library terms, plus third-party notices | https://github.com/dotnet/runtime/tree/v10.0.12 |
 
 These license expressions were checked against the installed NuGet package metadata. WpfMath includes font-related licensing; retain the upstream font notices with any binary distribution.

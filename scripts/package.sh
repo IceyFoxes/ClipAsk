@@ -11,7 +11,7 @@ BUILD_INSTALLER="${BUILD_INSTALLER:-0}"
 PROJECT="$ROOT/src/ClipAsk.Desktop/ClipAsk.Desktop.csproj"
 DOTNET="${DOTNET:-$ROOT/.devin/tools/dotnet-win/dotnet.exe}"
 CODEX_ROOT="${CLIPASK_CODEX_ROOT:-$ROOT/.devin/tools/codex-win}"
-CODEX_MANIFEST="$ROOT/eng/codex-win-x64-0.156.1.sha256"
+CODEX_MANIFEST="$ROOT/eng/codex-win-x64-0.160.0.sha256"
 VERSION="$(sed -n 's|.*<Version>\([^<]*\)</Version>.*|\1|p' "$PROJECT" | head -1)"
 CODEX_VERSION="$(sed -n 's|.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*|\1|p' "$CODEX_ROOT/codex-package.json" | head -1)"
 PUBLISH_DIR="$ROOT/artifacts/publish/ClipAsk-$VERSION-$RUNTIME"
@@ -27,7 +27,7 @@ fail() {
 [[ -x "$DOTNET" ]] || fail "dotnet was not found at $DOTNET (set DOTNET to override)"
 [[ -f "$CODEX_ROOT/codex.exe" ]] || fail "the pinned Codex runtime is missing at $CODEX_ROOT"
 [[ -f "$CODEX_MANIFEST" ]] || fail "the pinned Codex hash manifest is missing"
-[[ "$CODEX_VERSION" == "0.156.1" ]] || fail "expected Codex 0.156.1, found ${CODEX_VERSION:-unknown}"
+[[ "$CODEX_VERSION" == "0.160.0" ]] || fail "expected Codex 0.160.0, found ${CODEX_VERSION:-unknown}"
 
 TRACKED_STATUS="$(git -C "$ROOT" status --porcelain --untracked-files=no)"
 if [[ "$ALLOW_DIRTY" != "1" ]] && [[ -n "$TRACKED_STATUS" ]]; then
