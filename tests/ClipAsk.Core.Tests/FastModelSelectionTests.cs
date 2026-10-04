@@ -33,14 +33,12 @@ public sealed class FastModelSelectionTests
     [InlineData("hidden")]
     [InlineData("text-only")]
     [InlineData("no-low-effort")]
-    [InlineData("availability-warning")]
     public void DoesNotForceAnIneligiblePreferredModel(string condition)
     {
         var preferred = Model("gpt-6-luna",
             hidden: condition == "hidden",
             image: condition != "text-only",
-            low: condition != "no-low-effort",
-            warning: condition == "availability-warning");
+            low: condition != "no-low-effort");
         var selected = CodexPolicy.SelectModel([Model("gpt-5.6-sol", isDefault: true), preferred]);
         Assert.Equal("gpt-5.6-sol", selected.Model);
         Assert.Equal("medium", selected.ReasoningEffort);
@@ -122,7 +120,21 @@ public sealed class FastModelSelectionTests
         Assert.Throws<InvalidOperationException>(() => CodexPolicy.SelectModel(catalog, "gpt-6-luna", "high"));
     }
 
-    private static JsonElement Model(string model, bool isDefault = false, bool hidden = false, bool image = true, bool low = true, bool warning = false) =>
+    [Fact]
+    public void AnnouncedModelsRemainSelectable()
+    {
+        var catalog = new[]
+        {
+            Model("gpt-6.1-sol", isDefault: true, announcement: true),
+            Model("gpt-6-luna", announcement: true)
+        };
+
+        Assert.Contains(CodexPolicy.ListModels(catalog), model => model.Model == "gpt-6.1-sol");
+        Assert.Equal("gpt-6.1-sol", CodexPolicy.SelectModel(catalog, "gpt-6.1-sol", "medium").Model);
+        Assert.Equal("gpt-6-luna", CodexPolicy.SelectModel(catalog).Model);
+    }
+
+    private static JsonElement Model(string model, bool isDefault = false, bool hidden = false, bool image = true, bool low = true, bool announcement = false) =>
         JsonSerializer.SerializeToElement(new
         {
             id = model,
@@ -135,6 +147,6 @@ public sealed class FastModelSelectionTests
                 ? new[] { new { reasoningEffort = "low" }, new { reasoningEffort = "medium" } }
                 : new[] { new { reasoningEffort = "medium" } },
             inputModalities = image ? new[] { "text", "image" } : new[] { "text" },
-            availabilityNux = warning ? new { message = "Not available for this account" } : null
+            availabilityNux = announcement ? new { message = "Maximize usage with GPT-6.1 Sol." } : null
         });
 }

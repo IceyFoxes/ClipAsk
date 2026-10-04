@@ -177,9 +177,7 @@ public static class CodexPolicy
         if (preferred.Length == 1)
         {
             var candidate = preferred[0];
-            var hasAvailabilityWarning = candidate.TryGetProperty("availabilityNux", out var availability) &&
-                availability.ValueKind != JsonValueKind.Null;
-            if (!hasAvailabilityWarning && SupportsImages(candidate) && SupportsEffort(candidate, PreferredReasoningEffort))
+            if (SupportsImages(candidate) && SupportsEffort(candidate, PreferredReasoningEffort))
             {
                 var displayName = candidate.GetProperty("displayName").GetString();
                 return new(
@@ -246,10 +244,12 @@ public static class CodexPolicy
         return selected with { ReasoningEffort = requestedEffort };
     }
 
+    // The catalog marks unavailable models as hidden. availabilityNux is only a
+    // promotional notice, such as the introduction of a new model, and does not
+    // affect eligibility.
     private static bool IsEligibleModel(JsonElement model)
     {
-        var hasAvailabilityWarning = model.TryGetProperty("availabilityNux", out var availability) && availability.ValueKind != JsonValueKind.Null;
-        if (hasAvailabilityWarning || model.GetProperty("hidden").GetBoolean() || !SupportsImages(model))
+        if (model.GetProperty("hidden").GetBoolean() || !SupportsImages(model))
             return false;
         var name = model.GetProperty("model").GetString();
         var effort = name == PreferredModel && SupportsEffort(model, PreferredReasoningEffort)
